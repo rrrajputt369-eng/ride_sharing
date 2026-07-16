@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Route Dispatch — Live Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root{
+    --ink:#141822; --ink2:#1A1F2B;
+    --panel: rgba(36,44,58,0.72); --panel-solid:#242C3A; --panel-raised:#2E3849;
+    --hairline: rgba(255,255,255,0.08); --hairline-strong: rgba(255,255,255,0.14);
+    --chalk:#F4F5F7; --dim:#8D97AC;
+    --amber:#FFA53E; --amber-glow: rgba(255,165,62,0.35);
+    --teal:#3FD4B8; --teal-dim: rgba(63,212,184,0.14);
+    --rose:#FF6B6B; --rose-dim: rgba(255,107,107,0.14);
+    --violet:#8B7CF6;
+    --grad-hero: linear-gradient(135deg, #1B2030 0%, #232A3D 55%, #1B2030 100%);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(255,165,62,0.08), transparent 60%),
+      radial-gradient(1000px 700px at 100% 10%, rgba(63,212,184,0.07), transparent 55%),
+      var(--ink);
+    color:var(--chalk); font-family:'Space Grotesk',sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes popIn{ 0%{ transform:scale(0.4); opacity:0; } 70%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); } }
+  @keyframes softPulse{ 0%{ box-shadow:0 0 0 0 rgba(63,212,184,.55); } 70%{ box-shadow:0 0 0 10px rgba(63,212,184,0); } 100%{ box-shadow:0 0 0 0 rgba(63,212,184,0); } }
+  @keyframes shimmer{ 0%{ background-position:0% 50%; } 100%{ background-position:200% 50%; } }
+  @keyframes toastIn{ from{ opacity:0; transform:translateX(24px) scale(0.97); } to{ opacity:1; transform:translateX(0) scale(1); } }
+  @keyframes toastOut{ from{ opacity:1; transform:translateX(0); } to{ opacity:0; transform:translateX(24px); } }
+
+  .app{ display:grid; grid-template-columns:360px 1fr 320px; grid-template-rows:60px 1fr; height:100vh; }
+  @media (max-width:1050px){ .app{ grid-template-columns:1fr; grid-template-rows:auto auto 420px auto; height:auto; } }
+
+  .topbar{
+    grid-column:1/4; display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px; border-bottom:1px solid var(--hairline-strong); background:var(--grad-hero); flex-wrap:wrap; gap:10px;
+    box-shadow:0 2px 20px rgba(0,0,0,0.25);
+  }
+  @media (max-width:1050px){ .topbar{grid-column:1;} }
+  .topbar h1{ font-size:16px; letter-spacing:0.03em; text-transform:uppercase; margin:0; font-weight:700; }
+  .topbar h1 .tag{ background:linear-gradient(90deg,var(--amber),#FFC978); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .topbar .sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0; }
+  .clock{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--dim); letter-spacing:0.04em; min-width:78px; }
+  .clock b{ color:var(--chalk); font-weight:600; }
+
+  .mode-tabs{ display:flex; gap:4px; background:rgba(0,0,0,0.25); border:1px solid var(--hairline-strong); border-radius:8px; padding:3px; backdrop-filter:blur(6px); }
+  .mode-tab{
+    background:none; border:none; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px;
+    padding:8px 14px; border-radius:6px; cursor:pointer; transition:all .18s ease;
+  }
+  .mode-tab:hover{ color:var(--chalk); }
+  .mode-tab.active{ background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; font-weight:700; box-shadow:0 2px 10px var(--amber-glow); }
+
+  .live-pill{ display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim);
+    background:rgba(0,0,0,0.2); padding:6px 12px; border-radius:20px; border:1px solid var(--hairline-strong); }
+  .live-dot{ width:8px;height:8px;border-radius:50%; background:var(--dim); }
+  .live-dot.on{ background:var(--teal); animation:softPulse 1.6s infinite; }
+  .cap-field{ display:flex; align-items:center; gap:8px; }
+  .cap-field label{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); }
+  .cap-field input{ width:52px; background:var(--ink); border:1px solid var(--hairline); color:var(--chalk); font-family:'IBM Plex Mono',monospace; font-size:13px; padding:5px 6px; border-radius:3px; }
+
+  .sidebar{ overflow-y:auto; border-right:1px solid var(--hairline); padding:18px; background:var(--ink2); }
+  .panel{
+    background:var(--panel); backdrop-filter:blur(10px); border:1px solid var(--hairline);
+    border-radius:10px; padding:16px 18px; margin-bottom:16px; box-shadow:0 4px 18px rgba(0,0,0,0.18);
+    transition:border-color .2s ease;
+  }
+  .panel:hover{ border-color:var(--hairline-strong); }
+  .panel h2{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); margin:0 0 13px 0; display:flex; align-items:center; gap:8px; }
+  .panel h2::before{ content:''; width:7px;height:7px;background:linear-gradient(135deg,var(--amber),#FF8A3D);border-radius:2px;display:inline-block; box-shadow:0 0 8px var(--amber-glow); }
+
+  .mode-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .mode-btn{ background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px 6px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; text-align:center; transition:all .15s ease; }
+  .mode-btn:hover{ border-color:var(--hairline-strong); transform:translateY(-1px); }
+  .mode-btn.armed{ background:var(--teal-dim); border-color:var(--teal); color:var(--teal); box-shadow:0 0 12px rgba(63,212,184,0.25); }
+  .mode-btn.source.armed, .mode-btn.destination.armed{ background:rgba(255,165,62,0.14); border-color:var(--amber); color:var(--amber); box-shadow:0 0 12px var(--amber-glow); }
+  .hint{ font-size:11px; color:var(--dim); font-family:'IBM Plex Mono',monospace; line-height:1.55; margin-bottom:10px;}
+
+  .subtabs{ display:flex; gap:6px; margin-bottom:10px; }
+  .subtab{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--dim); padding:6px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; cursor:pointer; text-align:center; }
+  .subtab.active{ border-color:var(--amber); color:var(--amber); }
+
+  .coord-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .coord-row input{ flex:1; min-width:0; }
+  .coord-row button{ white-space:nowrap; }
+
+  .req-preview{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:11px 12px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); margin-bottom:10px; }
+  .req-preview b{ color:var(--chalk); }
+  .field-row{ display:flex; gap:10px; margin-bottom:10px; }
+  .field-row > div{ flex:1; }
+  label.field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--dim); display:block; margin-bottom:5px; }
+  input[type=text], input[type=number], select{
+    width:100%; background:rgba(0,0,0,0.22); border:1px solid var(--hairline); color:var(--chalk);
+    font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 10px; border-radius:6px; transition:border-color .15s ease;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus{ outline:none; border-color:var(--amber); box-shadow:0 0 0 3px rgba(255,165,62,0.12); }
+  select{ appearance:none; }
+  .small-btn{
+    background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk);
+    padding:9px 11px; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease;
+  }
+  .small-btn:hover{ border-color:var(--teal); color:var(--teal); transform:translateY(-1px); }
+  .submit-btn{
+    width:100%; background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; border:none; padding:12px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.04em;
+    text-transform:uppercase; border-radius:8px; cursor:pointer; box-shadow:0 4px 16px var(--amber-glow); transition:all .15s ease;
+  }
+  .submit-btn:disabled{ opacity:0.3; cursor:not-allowed; box-shadow:none; }
+  .submit-btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 6px 22px var(--amber-glow); }
+  .submit-btn:active:not(:disabled){ transform:translateY(0); }
+
+  .sim-row{ display:flex; gap:8px; }
+  .sim-btn{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease; }
+  .sim-btn:hover{ transform:translateY(-1px); }
+  .sim-btn.active{ border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
+  .sim-btn.reset:hover{ border-color:var(--rose); color:var(--rose); }
+
+  .map-col{ position:relative; }
+  #map{ width:100%; height:100%; }
+  .leaflet-div-icon{ background:transparent; border:none; }
+  .flow-line{ stroke-dasharray:10 7; animation:dashflow 0.9s linear infinite; }
+  @keyframes dashflow{ to{ stroke-dashoffset:-17; } }
+
+  /* ---- Matrix mode ---- */
+  .loc-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .loc-chip{
+    display:flex; align-items:center; gap:6px; background:var(--panel-raised); border:1px solid var(--hairline);
+    border-radius:14px; padding:5px 10px 5px 13px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    animation:popIn .25s ease;
+  }
+  .loc-chip button{ background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; line-height:1; padding:0; }
+  .loc-chip button:hover{ color:var(--rose); }
+  .add-loc-row{ display:flex; gap:8px; }
+  .add-loc-row input{ flex:1; }
+
+  .matrix-wrap{ overflow-x:auto; margin-top:4px; }
+  table.matrix{ border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
+  table.matrix th, table.matrix td{ padding:4px 5px; text-align:center; border:1px solid var(--hairline); }
+  table.matrix th{ color:var(--amber); background:var(--panel-raised); font-weight:600; min-width:40px; }
+  table.matrix td.diag{ color:var(--dim); background:var(--panel-raised); }
+  table.matrix td input{ width:46px; padding:4px 3px; text-align:center; font-size:11.5px; border:none; background:transparent; border-radius:4px; }
+  table.matrix td input:focus{ background:rgba(255,165,62,0.1); box-shadow:none; }
+
+  .schematic-col{ display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; }
+  .tripline-wrap{ width:100%; overflow-x:auto; padding:10px 4px; }
+  .tripline{ position:relative; display:flex; align-items:flex-end; min-width:min-content; padding-top:26px; }
+  .stop{ position:relative; display:flex; flex-direction:column; align-items:center; min-width:82px; flex:1; animation:popIn .3s ease; }
+  .stop .rail{ position:absolute; top:14px; left:50%; width:100%; height:2px; background:linear-gradient(90deg,var(--amber),#FFC978); z-index:0; }
+  .stop:first-child .rail{ left:50%; width:50%; }
+  .stop:last-child .rail{ width:50%; }
+  .stop .node{ width:13px;height:13px; border-radius:50%; background:var(--panel-raised); border:2px solid var(--amber); z-index:1; margin-bottom:8px; box-shadow:0 0 10px var(--amber-glow); }
+  .stop.terminal .node{ background:var(--amber); width:16px;height:16px; }
+  .stop .occ-bar{ width:24px; background:linear-gradient(180deg,#5CEBD1,var(--teal)); border-radius:4px 4px 0 0; margin-bottom:6px; }
+  .stop .occ-num{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--teal); margin-top:-4px; margin-bottom:4px; }
+  .stop .stop-label{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--chalk); text-align:center; }
+  .stop .stop-sub{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .rightbar{ overflow-y:auto; border-left:1px solid var(--hairline); padding:18px; background:var(--ink2); }
+  .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat-box{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:10px 12px; transition:transform .15s ease; }
+  .stat-box .stat-label{ font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); margin-bottom:3px;}
+  .stat-box .stat-value{ font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:600; transition:color .2s ease; }
+  .stat-box.accent .stat-value{ color:var(--amber); }
+  .stat-box.flash{ transform:scale(1.04); }
+
+  .route-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
+  .route-list li{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--hairline); animation:fadeSlideIn .25s ease; }
+  .route-list li:last-child{ border-bottom:none; }
+  .route-list .occ{ color:var(--teal); font-weight:600; }
+  .route-list .kind-tag{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .manifest-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:6px; }
+  .manifest-item{
+    display:flex; justify-content:space-between; align-items:center; padding:8px 10px;
+    background:var(--teal-dim); border-left:3px solid var(--teal); border-radius:6px; animation:fadeSlideIn .25s ease;
+  }
+  .manifest-item .mi-label{ color:var(--chalk); }
+  .manifest-item .mi-sub{ color:var(--dim); font-size:10px; }
+  .cancel-btn{
+    background:rgba(255,107,107,0.12); border:1px solid transparent; color:var(--rose); width:24px; height:24px;
+    border-radius:50%; cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+    transition:all .15s ease;
+  }
+  .cancel-btn:hover{ background:var(--rose); color:#fff; transform:scale(1.08); }
+
+  .feed{ display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:10.8px; }
+  .feed-item{ padding:8px 10px; border-radius:7px; border-left:3px solid var(--hairline); background:var(--panel-raised); animation:fadeSlideIn .3s ease; }
+  .feed-item.ok{ border-left-color:var(--teal); }
+  .feed-item.no{ border-left-color:var(--rose); }
+  .feed-item.cancel{ border-left-color:var(--violet); }
+  .feed-item .ts{ color:var(--dim); margin-right:6px; }
+  .feed-item .reason{ color:var(--rose); }
+  .empty-note{ color:var(--dim); font-size:11.5px; font-family:'IBM Plex Mono',monospace; }
+  .hidden{ display:none !important; }
+
+  /* ---- Toasts ---- */
+  #toast-stack{ position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+  .toast{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--chalk); background:var(--panel-solid);
+    border:1px solid var(--hairline-strong); border-left:4px solid var(--teal); padding:11px 16px; border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35); animation:toastIn .25s ease; max-width:320px;
+  }
+  .toast.no{ border-left-color:var(--rose); }
+  .toast.cancel{ border-left-color:var(--violet); }
+  .toast.leaving{ animation:toastOut .25s ease forwards; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <h1>Route <span class="tag">Dispatch</span> <span class="sub">— live console</span></h1>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-geo">🗺️ Map / Coordinates</button>
+      <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="cap-field"><label>Capacity</label><input type="number" id="capacity" value="3" min="1"></div>
+      <div class="live-pill"><span class="live-dot" id="live-dot"></span><span id="live-text">idle</span></div>
+    </div>
+  </div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <div class="sidebar">
+
+    <!-- ---- GEO MODE PANELS ---- -->
+    <div id="geo-panels">
+      <div class="panel">
+        <h2>Anchors</h2>
+        <div class="hint">Place Source / Destination by map click or exact coordinates.</div>
+        <div class="mode-grid">
+          <button class="mode-btn source" id="mode-source">📍 Click: Source</button>
+          <button class="mode-btn destination" id="mode-destination">🏁 Click: Destination</button>
+        </div>
+        <div class="coord-row">
+          <input type="number" step="0.0001" id="src-lat" placeholder="source lat">
+          <input type="number" step="0.0001" id="src-lng" placeholder="source lng">
+          <button class="small-btn" id="src-set-coord">Set</button>
+        </div>
+        <div class="coord-row">
+          <input type="number" step="0.0001" id="dst-lat" placeholder="dest lat">
+          <input type="number" step="0.0001" id="dst-lng" placeholder="dest lng">
+          <button class="small-btn" id="dst-set-coord">Set</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>New Request</h2>
+        <div class="hint">Arm pickup/dropoff + click the map, or type exact coordinates below.</div>
+        <div class="mode-grid">
+          <button class="mode-btn pickup" id="mode-pickup">🟢 Click: Pickup</button>
+          <button class="mode-btn drop" id="mode-drop">🔷 Click: Dropoff</button>
+        </div>
+        <div class="coord-row">
+          <input type="number" step="0.0001" id="pu-lat" placeholder="pickup lat">
+          <input type="number" step="0.0001" id="pu-lng" placeholder="pickup lng">
+          <button class="small-btn" id="pu-set-coord">Set</button>
+        </div>
+        <div class="coord-row">
+          <input type="number" step="0.0001" id="dr-lat" placeholder="dropoff lat">
+          <input type="number" step="0.0001" id="dr-lng" placeholder="dropoff lng">
+          <button class="small-btn" id="dr-set-coord">Set</button>
+        </div>
+        <div class="req-preview" id="req-preview">pickup: <b>—</b> &nbsp; dropoff: <b>—</b><br>base distance: <b>—</b></div>
+        <div class="field-row">
+          <div><label class="field-label">Flexibility Δ (km)</label><input type="number" id="req-flex" value="1" min="0" step="0.5"></div>
+        </div>
+        <button class="submit-btn" id="submit-req" disabled>Submit Request →</button>
+      </div>
+
+      <div class="panel">
+        <h2>Live Simulation</h2>
+        <div class="hint">Auto-generate nearby requests to stress-test the live dispatcher.</div>
+        <div class="sim-row">
+          <button class="sim-btn" id="sim-toggle">▶ Start</button>
+          <button class="sim-btn reset" id="reset-btn">⟲ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- MATRIX MODE PANELS ---- -->
+    <div id="matrix-panels" class="hidden">
+      <div class="panel">
+        <h2>Anchors</h2>
+        <div class="hint">Name the Source and Destination nodes for the matrix.</div>
+        <div class="field-row">
+          <div><label class="field-label">Source ID</label><input type="text" id="mx-src-id" value="S"></div>
+          <div><label class="field-label">Destination ID</label><input type="text" id="mx-dst-id" value="E"></div>
+        </div>
+        <button class="small-btn" id="mx-apply-anchors" style="width:100%;">Apply Anchors</button>
+      </div>
+
+      <div class="panel">
+        <h2>Locations</h2>
+        <div class="hint">Add every pickup / dropoff node that will appear in requests.</div>
+        <div class="loc-chip-row" id="loc-chip-row"></div>
+        <div class="add-loc-row">
+          <input type="text" id="new-loc-id" placeholder="e.g. P1">
+          <button class="small-btn" id="add-loc-btn">+ Add</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Distance Matrix (km)</h2>
+        <div class="matrix-wrap" id="matrix-wrap"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:0;">edits mirror across the diagonal — symmetric distances assumed</div>
+      </div>
+
+      <div class="panel">
+        <h2>New Request</h2>
+        <div class="field-row">
+          <div><label class="field-label">Pickup</label><select id="mx-pickup"></select></div>
+          <div><label class="field-label">Dropoff</label><select id="mx-drop"></select></div>
+        </div>
+        <div class="req-preview" id="mx-req-preview">base distance (from matrix): <b>—</b></div>
+        <div class="field-row">
+          <div><label class="field-label">Flexibility Δ (km)</label><input type="number" id="mx-req-flex" value="1" min="0" step="0.5"></div>
+        </div>
+        <button class="submit-btn" id="mx-submit-req">Submit Request →</button>
+      </div>
+
+      <div class="panel">
+        <button class="sim-btn reset" id="mx-reset-btn" style="width:100%;">⟲ Reset Route</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CENTER: MAP or SCHEMATIC ================= -->
+  <div class="map-col" id="map-col"><div id="map"></div></div>
+  <div class="schematic-col hidden" id="schematic-col">
+    <div class="tripline-wrap"><div class="tripline" id="tripline"></div></div>
+  </div>
+
+  <!-- ================= RIGHT SIDEBAR ================= -->
+  <div class="rightbar">
+    <div class="panel">
+      <h2>Readout</h2>
+      <div class="stats-grid">
+        <div class="stat-box accent"><div class="stat-label">Distance</div><div class="stat-value" id="stat-dist">0.0 km</div></div>
+        <div class="stat-box"><div class="stat-label">Last Op</div><div class="stat-value" id="stat-time">— ms</div></div>
+        <div class="stat-box"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">0</div></div>
+        <div class="stat-box"><div class="stat-label">Rejected</div><div class="stat-value" id="stat-rejected">0</div></div>
+        <div class="stat-box" style="grid-column:1/3;"><div class="stat-label">Cancelled</div><div class="stat-value" id="stat-cancelled">0</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Active Manifest</h2>
+      <ul class="manifest-list" id="manifest-list"><li class="empty-note">no requests on board yet</li></ul>
+    </div>
+    <div class="panel">
+      <h2>Route &amp; Passenger Count</h2>
+      <ul class="route-list" id="route-list"><li class="empty-note">set source &amp; destination to begin</li></ul>
+    </div>
+    <div class="panel">
+      <h2>Live Feed</h2>
+      <div class="feed" id="feed"><div class="empty-note">dispatch events will appear here</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-stack"></div>
+
+<script>
+/* =========================================================
+   ALGORITHM CORE (mode-agnostic) — insertion heuristic +
+   full constraint re-validation on every candidate.
+   `distFn` is swapped depending on input mode (geo vs matrix).
+   ========================================================= */
+
+const EPSILON = 1e-6; // guards against floating-point rounding at exact-boundary flex checks
+
+function haversineKm(a, b){
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI/180;
+  const dLng = (b.lng - a.lng) * Math.PI/180;
+  const lat1 = a.lat * Math.PI/180, lat2 = b.lat * Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const ROAD_FACTOR = 1.3;
+function geoDistFn(a, b){ return a.id === b.id ? 0 : haversineKm(a,b) * ROAD_FACTOR; }
+
+let matrixDist = {}; // "idA|idB" -> km
+function mKey(a,b){ return a+'|'+b; }
+function matrixDistFn(a, b){
+  if(a.id === b.id) return 0;
+  const v = matrixDist[mKey(a.id,b.id)] ?? matrixDist[mKey(b.id,a.id)];
+  return v ?? 0;
+}
+function setMatrixDist(a,b,val){ matrixDist[mKey(a,b)] = val; matrixDist[mKey(b,a)] = val; }
+function getMatrixDist(a,b){ return matrixDist[mKey(a,b)] ?? matrixDist[mKey(b,a)] ?? 0; }
+
+function currentDistFn(a,b){ return MODE === 'geo' ? geoDistFn(a,b) : matrixDistFn(a,b); }
+
+function computeRouteDistance(route){
+  let total = 0;
+  for(let k=1;k<route.length;k++) total += currentDistFn(route[k-1], route[k]);
+  return total;
+}
+
+function validateDynamicConstraints(route, manifest, capacity){
+  let currentPassengers = 0;
+  const passengerCounts = [];
+  const locationIndices = {};
+  for(let idx=0; idx<route.length; idx++) locationIndices[route[idx].id] = idx;
+
+  for(let idx=0; idx<route.length; idx++){
+    const node = route[idx];
+    for(const req of Object.values(manifest)){
+      if(node.id === req.pickup.id) currentPassengers++;
+      if(node.id === req.drop.id) currentPassengers--;
+    }
+    passengerCounts.push(currentPassengers);
+    if(currentPassengers > capacity) return {valid:false, cost:Infinity, passengerCounts:[], reason:'capacity'};
+  }
+
+  const cumulativeDist = new Array(route.length).fill(0);
+  for(let k=1;k<route.length;k++) cumulativeDist[k] = cumulativeDist[k-1] + currentDistFn(route[k-1], route[k]);
+
+  for(const req of Object.values(manifest)){
+    const pPos = locationIndices.hasOwnProperty(req.pickup.id) ? locationIndices[req.pickup.id] : -1;
+    const dPos = locationIndices.hasOwnProperty(req.drop.id) ? locationIndices[req.drop.id] : -1;
+    if(pPos === -1 || dPos === -1 || pPos >= dPos) return {valid:false, cost:Infinity, passengerCounts:[], reason:'chronology'};
+
+    const actualTravelDist = cumulativeDist[dPos] - cumulativeDist[pPos];
+    const maxAllowedDist = req.dist + req.flex;
+
+    // FIX: epsilon tolerance -- without it, floating-point rounding from summing
+    // cumulative distances can make an exact-boundary case (very commonly flex=0)
+    // register as a violation (or, depending on rounding direction, silently pass
+    // a case that should fail) purely due to ~1e-13 noise, not a real detour.
+    if(actualTravelDist > maxAllowedDist + EPSILON) return {valid:false, cost:Infinity, passengerCounts:[], reason:'flexibility'};
+  }
+
+  return {valid:true, cost:cumulativeDist[route.length-1], passengerCounts};
+}
+
+function insertRequestLive(route, manifest, newRequest, capacity){
+  const startTime = performance.now();
+  const baseRouteCost = computeRouteDistance(route);
+  const startSlot = 1;
+  const endSlot = route.length - 1;
+
+  const testManifest = Object.assign({}, manifest);
+  testManifest[newRequest.id] = newRequest;
+
+  let bestRoute = null;
+  let minCostIncrease = Infinity;
+  let sawAnyValid = false;
+  let lastFailReason = null;
+
+  for(let i=startSlot; i<=endSlot; i++){
+    for(let j=i; j<=endSlot; j++){
+      const candidateRoute = [
+        ...route.slice(0,i), newRequest.pickup, ...route.slice(i,j),
+        newRequest.drop, ...route.slice(j, route.length)
+      ];
+      const check = validateDynamicConstraints(candidateRoute, testManifest, capacity);
+      if(check.valid){
+        sawAnyValid = true;
+        const increase = check.cost - baseRouteCost;
+        if(increase < minCostIncrease){ minCostIncrease = increase; bestRoute = candidateRoute; }
+      } else {
+        lastFailReason = check.reason;
+      }
+    }
+  }
+
+  const elapsedMs = performance.now() - startTime;
+  if(bestRoute){
+    return {accepted:true, route:bestRoute, manifest:testManifest, costIncrease:minCostIncrease, elapsedMs};
+  }
+  return {accepted:false, route, manifest, costIncrease:null, elapsedMs, reason: lastFailReason || 'no-valid-slot'};
+}
+
+/* =========================================================
+   APP STATE
+   ========================================================= */
+
+const DEFAULT_CENTER = [27.5530, 76.6346];
+let MODE = 'geo'; // 'geo' | 'matrix'
+
+let capacity = 3;
+let source = null, destination = null;
+let route = [];
+let manifest = {};
+let acceptedList = [];
+let rejectedList = [];
+let cancelledList = [];
+let reqCounter = 0;
+let armedMode = null;
+let pendingPickup = null, pendingDrop = null;
+let simRunning = false, simTimer = null;
+
+let map, routeLine, markers = {};
+
+// Matrix-mode specific state
+let mxLocations = []; // array of {id}
+let mxSource = {id:'S', kind:'source', label:'S'};
+let mxDestination = {id:'E', kind:'destination', label:'E'};
+
+function mkId(prefix){ return prefix + '_' + (++reqCounter); }
+
+/* =========================================================
+   TOASTS + LIVE CLOCK
+   ========================================================= */
+
+function showToast(message, kind='ok'){
+  const stack = document.getElementById('toast-stack');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind==='ok' ? '' : kind);
+  t.textContent = message;
+  stack.appendChild(t);
+  setTimeout(()=>{
+    t.classList.add('leaving');
+    setTimeout(()=>t.remove(), 260);
+  }, 2600);
+}
+
+function tickClock(){
+  const el = document.getElementById('clock');
+  if(el) el.innerHTML = '<b>' + new Date().toLocaleTimeString() + '</b>';
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* =========================================================
+   MODE SWITCHING
+   ========================================================= */
+
+document.getElementById('tab-geo').addEventListener('click', ()=>switchMode('geo'));
+document.getElementById('tab-matrix').addEventListener('click', ()=>switchMode('matrix'));
+
+function switchMode(mode){
+  if(MODE === mode) return;
+  MODE = mode;
+  document.getElementById('tab-geo').classList.toggle('active', mode==='geo');
+  document.getElementById('tab-matrix').classList.toggle('active', mode==='matrix');
+  document.getElementById('geo-panels').classList.toggle('hidden', mode!=='geo');
+  document.getElementById('matrix-panels').classList.toggle('hidden', mode!=='matrix');
+  document.getElementById('map-col').classList.toggle('hidden', mode!=='geo');
+  document.getElementById('schematic-col').classList.toggle('hidden', mode!=='matrix');
+
+  // Reset dispatch state when switching modes (distance semantics differ completely)
+  route = []; manifest = {}; acceptedList = []; rejectedList = []; cancelledList = [];
+  document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
+
+  if(mode === 'geo'){
+    if(!source) source = {id:'SOURCE', kind:'source', label:'S', lat:27.5530, lng:76.6346};
+    if(!destination) destination = {id:'DEST', kind:'destination', label:'E', lat:27.5730, lng:76.6580};
+    route = [source, destination];
+    setTimeout(()=>{ map.invalidateSize(); renderAll(); }, 50);
+  } else {
+    route = [mxSource, mxDestination];
+    renderMatrixLocations();
+    renderMatrixTable();
+    renderMatrixRequestOptions();
+    renderAll();
+  }
+}
+
+/* =========================================================
+   MAP SETUP (geo mode)
+   ========================================================= */
+
+const GridBackdrop = L.GridLayer.extend({
+  createTile: function(coords){
+    const tile = document.createElement('canvas');
+    const size = this.getTileSize();
+    tile.width = size.x; tile.height = size.y;
+    const ctx = tile.getContext('2d');
+    ctx.fillStyle = '#222A35'; ctx.fillRect(0,0,size.x,size.y);
+    const minor=32, major=128;
+    for(let x=0;x<=size.x;x+=minor){
+      ctx.strokeStyle = (x%major===0) ? 'rgba(232,163,61,0.16)' : 'rgba(255,255,255,0.045)';
+      ctx.lineWidth = (x%major===0)?1.4:1;
+      ctx.beginPath(); ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,size.y); ctx.stroke();
+    }
+    for(let y=0;y<=size.y;y+=minor){
+      ctx.strokeStyle = (y%major===0) ? 'rgba(232,163,61,0.16)' : 'rgba(255,255,255,0.045)';
+      ctx.lineWidth = (y%major===0)?1.4:1;
+      ctx.beginPath(); ctx.moveTo(0,y+0.5); ctx.lineTo(size.x,y+0.5); ctx.stroke();
+    }
+    return tile;
+  }
+});
+
+function initMap(){
+  map = L.map('map', {zoomControl:true}).setView(DEFAULT_CENTER, 13);
+  new GridBackdrop({tileSize:256, minZoom:2, maxZoom:19}).addTo(map);
+  map.attributionControl.setPrefix('offline coordinate grid — not real street imagery');
+  routeLine = L.polyline([], {color:'#E8A33D', weight:4, opacity:0.9}).addTo(map);
+  map.on('click', onMapClick);
+}
+
+function iconFor(kind){
+  const palette = {
+    source:{bg:'#E8A33D', border:'#E8A33D', text:'#211705', size:30, label:'S'},
+    destination:{bg:'#211705', border:'#E8A33D', text:'#E8A33D', size:30, label:'E'},
+    pickup:{bg:'#4FA9A2', border:'#4FA9A2', text:'#0E1F1E', size:24, label:'P'},
+    drop:{bg:'#1E3B39', border:'#4FA9A2', text:'#4FA9A2', size:24, label:'D'},
+    pending:{bg:'transparent', border:'#8D97A8', text:'#8D97A8', size:22, label:'?'}
+  };
+  const p = palette[kind];
+  return L.divIcon({
+    html:`<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:${p.size>26?11:9.5}px;font-weight:600;color:${p.text};box-shadow:0 2px 10px rgba(0,0,0,.45), 0 0 14px ${p.border}55;">${p.label}</div>`,
+    className:'', iconSize:[p.size,p.size], iconAnchor:[p.size/2,p.size/2]
+  });
+}
+
+function onMapClick(e){
+  if(MODE !== 'geo' || !armedMode) return;
+  const latlng = {lat:e.latlng.lat, lng:e.latlng.lng};
+  applyPlacement(armedMode, latlng);
+  disarm();
+}
+
+function applyPlacement(kind, latlng){
+  if(kind === 'source'){ source = {id:'SOURCE', kind:'source', label:'S', ...latlng}; rebuildBaseRoute(); }
+  else if(kind === 'destination'){ destination = {id:'DEST', kind:'destination', label:'E', ...latlng}; rebuildBaseRoute(); }
+  else if(kind === 'pickup'){ pendingPickup = {id:mkId('P'), kind:'pickup', label:'P', ...latlng}; updateReqPreview(); }
+  else if(kind === 'drop'){ pendingDrop = {id:mkId('D'), kind:'drop', label:'D', ...latlng}; updateReqPreview(); }
+  renderMarkers();
+}
+
+function disarm(){ armedMode = null; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('armed')); }
+function arm(mode, btn){ const was = armedMode===mode; disarm(); if(!was){ armedMode=mode; btn.classList.add('armed'); } }
+
+document.getElementById('mode-source').addEventListener('click', e=>arm('source', e.currentTarget));
+document.getElementById('mode-destination').addEventListener('click', e=>arm('destination', e.currentTarget));
+document.getElementById('mode-pickup').addEventListener('click', e=>arm('pickup', e.currentTarget));
+document.getElementById('mode-drop').addEventListener('click', e=>arm('drop', e.currentTarget));
+
+/* ---- Coordinate-entry (typed lat/lng instead of a map click) ---- */
+document.getElementById('src-set-coord').addEventListener('click', ()=>{
+  const lat=parseFloat(document.getElementById('src-lat').value), lng=parseFloat(document.getElementById('src-lng').value);
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid source lat/lng.');
+  applyPlacement('source', {lat,lng});
+});
+document.getElementById('dst-set-coord').addEventListener('click', ()=>{
+  const lat=parseFloat(document.getElementById('dst-lat').value), lng=parseFloat(document.getElementById('dst-lng').value);
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid destination lat/lng.');
+  applyPlacement('destination', {lat,lng});
+});
+document.getElementById('pu-set-coord').addEventListener('click', ()=>{
+  const lat=parseFloat(document.getElementById('pu-lat').value), lng=parseFloat(document.getElementById('pu-lng').value);
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid pickup lat/lng.');
+  applyPlacement('pickup', {lat,lng});
+});
+document.getElementById('dr-set-coord').addEventListener('click', ()=>{
+  const lat=parseFloat(document.getElementById('dr-lat').value), lng=parseFloat(document.getElementById('dr-lng').value);
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid dropoff lat/lng.');
+  applyPlacement('drop', {lat,lng});
+});
+
+function rebuildBaseRoute(){
+  if(!source || !destination) return;
+  const intermediates = route.slice(1, Math.max(1, route.length-1)).filter(n=>n.kind!=='source' && n.kind!=='destination');
+  route = [source, ...intermediates, destination];
+  renderAll();
+}
+
+/* =========================================================
+   GEO REQUEST PREVIEW + SUBMIT
+   ========================================================= */
+
+function updateReqPreview(){
+  const preview = document.getElementById('req-preview');
+  const submitBtn = document.getElementById('submit-req');
+  const pLabel = pendingPickup ? `(${pendingPickup.lat.toFixed(4)}, ${pendingPickup.lng.toFixed(4)})` : '—';
+  const dLabel = pendingDrop ? `(${pendingDrop.lat.toFixed(4)}, ${pendingDrop.lng.toFixed(4)})` : '—';
+  let baseDist = '—';
+  if(pendingPickup && pendingDrop) baseDist = (haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR).toFixed(2) + ' km';
+  preview.innerHTML = `pickup: <b>${pLabel}</b><br>dropoff: <b>${dLabel}</b><br>base distance: <b>${baseDist}</b>`;
+  submitBtn.disabled = !(pendingPickup && pendingDrop && source && destination);
+}
+
+document.getElementById('submit-req').addEventListener('click', ()=>{
+  if(!(pendingPickup && pendingDrop && source && destination)) return;
+  const baseDist = haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR;
+  const flex = parseFloat(document.getElementById('req-flex').value) || 0;
+  const reqId = mkId('REQ');
+  const req = { id:reqId, pickup:{...pendingPickup, label:'P'}, drop:{...pendingDrop, label:'D'}, dist:baseDist, flex };
+  processRequest(req);
+  pendingPickup = null; pendingDrop = null;
+  updateReqPreview();
+});
+
+/* =========================================================
+   MATRIX MODE
+   ========================================================= */
+
+document.getElementById('mx-apply-anchors').addEventListener('click', ()=>{
+  const sId = document.getElementById('mx-src-id').value.trim() || 'S';
+  const dId = document.getElementById('mx-dst-id').value.trim() || 'E';
+  mxSource = {id:sId, kind:'source', label:sId};
+  mxDestination = {id:dId, kind:'destination', label:dId};
+  route = [mxSource, mxDestination];
+  manifest = {}; acceptedList = []; rejectedList = [];
+  renderMatrixTable();
+  renderMatrixRequestOptions();
+  renderAll();
+});
+
+document.getElementById('add-loc-btn').addEventListener('click', ()=>{
+  const idInput = document.getElementById('new-loc-id');
+  const id = idInput.value.trim();
+  if(!id) return;
+  if(mxLocations.find(l=>l.id===id) || id===mxSource.id || id===mxDestination.id){
+    alert('That location ID already exists.'); return;
+  }
+  mxLocations.push({id});
+  idInput.value = '';
+  renderMatrixLocations();
+  renderMatrixTable();
+  renderMatrixRequestOptions();
+});
+
+function removeMxLocation(id){
+  mxLocations = mxLocations.filter(l=>l.id!==id);
+  // purge matrix entries referencing this id
+  Object.keys(matrixDist).forEach(k=>{ if(k.startsWith(id+'|') || k.endsWith('|'+id)) delete matrixDist[k]; });
+  renderMatrixLocations();
+  renderMatrixTable();
+  renderMatrixRequestOptions();
+}
+
+function renderMatrixLocations(){
+  const row = document.getElementById('loc-chip-row');
+  row.innerHTML = '';
+  mxLocations.forEach(loc=>{
+    const chip = document.createElement('div');
+    chip.className = 'loc-chip';
+    chip.innerHTML = `${loc.id} <button data-id="${loc.id}">×</button>`;
+    chip.querySelector('button').addEventListener('click', e=>removeMxLocation(e.target.dataset.id));
+    row.appendChild(chip);
+  });
+  if(mxLocations.length===0){
+    row.innerHTML = '<span class="hint" style="margin:0;">no locations yet — add pickup/dropoff IDs below</span>';
+  }
+}
+
+function allMxNodes(){
+  return [mxSource, mxDestination, ...mxLocations.map(l=>({id:l.id, kind:'stop', label:l.id}))];
+}
+
+function renderMatrixTable(){
+  const nodes = allMxNodes();
+  const wrap = document.getElementById('matrix-wrap');
+  let html = '<table class="matrix"><thead><tr><th></th>';
+  nodes.forEach(n=> html += `<th>${n.id}</th>`);
+  html += '</tr></thead><tbody>';
+  nodes.forEach(rowN=>{
+    html += `<tr><th>${rowN.id}</th>`;
+    nodes.forEach(colN=>{
+      if(rowN.id===colN.id){ html += `<td class="diag">0</td>`; }
+      else {
+        const val = getMatrixDist(rowN.id, colN.id);
+        html += `<td><input type="number" min="0" step="0.1" value="${val}" data-a="${rowN.id}" data-b="${colN.id}"></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      setMatrixDist(e.target.dataset.a, e.target.dataset.b, parseFloat(e.target.value)||0);
+      renderMatrixTable();
+      renderMatrixRequestPreview();
+    });
+  });
+}
+
+function renderMatrixRequestOptions(){
+  const nodes = allMxNodes();
+  ['mx-pickup','mx-drop'].forEach(selId=>{
+    const sel = document.getElementById(selId);
+    const prev = sel.value;
+    sel.innerHTML = nodes.map(n=>`<option value="${n.id}">${n.id}</option>`).join('');
+    if(nodes.find(n=>n.id===prev)) sel.value = prev;
+  });
+  renderMatrixRequestPreview();
+}
+
+function renderMatrixRequestPreview(){
+  const p = document.getElementById('mx-pickup').value;
+  const d = document.getElementById('mx-drop').value;
+  const preview = document.getElementById('mx-req-preview');
+  if(!p || !d || p===d){ preview.innerHTML = 'base distance (from matrix): <b>—</b>'; return; }
+  const val = getMatrixDist(p,d);
+  preview.innerHTML = `base distance (from matrix): <b>${val.toFixed(2)} km</b> <span style="color:var(--dim)">(${p} → ${d})</span>`;
+}
+document.getElementById('mx-pickup').addEventListener('change', renderMatrixRequestPreview);
+document.getElementById('mx-drop').addEventListener('change', renderMatrixRequestPreview);
+
+document.getElementById('mx-submit-req').addEventListener('click', ()=>{
+  const pId = document.getElementById('mx-pickup').value;
+  const dId = document.getElementById('mx-drop').value;
+  if(!pId || !dId || pId===dId) return alert('Choose two different locations for pickup and dropoff.');
+  const flex = parseFloat(document.getElementById('mx-req-flex').value) || 0;
+  const dist = getMatrixDist(pId, dId);
+  const req = {
+    id: mkId('REQ'),
+    pickup:{id:pId, kind:'pickup', label:pId},
+    drop:{id:dId, kind:'drop', label:dId},
+    dist, flex
+  };
+  processRequest(req);
+});
+
+document.getElementById('mx-reset-btn').addEventListener('click', ()=>{
+  route = [mxSource, mxDestination]; manifest = {}; acceptedList=[]; rejectedList=[]; cancelledList=[];
+  document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
+  renderAll();
+});
+
+/* =========================================================
+   PROCESS A REQUEST (shared by both modes)
+   ========================================================= */
+
+function processRequest(req){
+  const result = insertRequestLive(route, manifest, req, capacity);
+  logEvent(result, req);
+  if(result.accepted){
+    route = result.route; manifest = result.manifest; acceptedList.push(req);
+    showToast(`${req.id} accepted — Δ${result.costIncrease.toFixed(2)} km`, 'ok');
+  } else {
+    rejectedList.push(req);
+    showToast(`${req.id} rejected — ${REASON_TEXT[result.reason] || 'constraint violated'}`, 'no');
+  }
+  document.getElementById('stat-time').textContent = result.elapsedMs.toFixed(2) + ' ms';
+  renderAll();
+}
+
+/* Cancel an already-accepted request: drop it from the manifest and remove
+   its pickup/drop stops from the route, preserving every other stop's order.
+   Removing a request can only reduce load on remaining riders, so the rest
+   of the manifest stays valid without needing to re-run the search. */
+function cancelRequest(reqId){
+  const req = manifest[reqId];
+  if(!req) return;
+  const newManifest = Object.assign({}, manifest);
+  delete newManifest[reqId];
+  route = route.filter(node => node.id !== req.pickup.id && node.id !== req.drop.id);
+  manifest = newManifest;
+  acceptedList = acceptedList.filter(r => r.id !== reqId);
+  cancelledList.push(req);
+
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty-note')) feed.innerHTML = '';
+  const ts = new Date().toLocaleTimeString();
+  const item = document.createElement('div');
+  item.className = 'feed-item cancel';
+  item.innerHTML = `<span class="ts">${ts}</span>${reqId} <b>cancelled</b> — removed from route`;
+  feed.prepend(item);
+
+  showToast(`${reqId} cancelled and removed from route`, 'cancel');
+  renderAll();
+}
+
+const REASON_TEXT = {
+  capacity: 'exceeds vehicle capacity',
+  chronology: "pickup/drop ordering invalid",
+  flexibility: 'exceeds a rider\'s detour flexibility (Δ)',
+  'no-valid-slot': 'no valid insertion slot found'
+};
+
+function logEvent(result, req){
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty-note')) feed.innerHTML = '';
+  const ts = new Date().toLocaleTimeString();
+  const item = document.createElement('div');
+  if(result.accepted){
+    item.className = 'feed-item ok';
+    item.innerHTML = `<span class="ts">${ts}</span>${req.id} <b>accepted</b> — Δcost ${result.costIncrease.toFixed(2)} km`;
+  } else {
+    item.className = 'feed-item no';
+    const reasonText = REASON_TEXT[result.reason] || 'constraint violated';
+    item.innerHTML = `<span class="ts">${ts}</span>${req.id} <b>rejected</b> — <span class="reason">${reasonText}</span>`;
+  }
+  feed.prepend(item);
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+
+function renderMarkers(){
+  if(MODE !== 'geo') return;
+  Object.values(markers).forEach(m=>map.removeLayer(m));
+  markers = {};
+  const place = (node, kind, tooltip)=>{
+    const marker = L.marker([node.lat, node.lng], {icon: iconFor(kind)}).addTo(map);
+    if(tooltip) marker.bindTooltip(tooltip, {permanent:false});
+    markers[node.id] = marker;
+  };
+  if(source) place(source, 'source', 'Source');
+  if(destination) place(destination, 'destination', 'Destination');
+  route.forEach(node=>{
+    if(node.kind === 'pickup') place(node, 'pickup', 'Pickup');
+    if(node.kind === 'drop') place(node, 'drop', 'Dropoff');
+  });
+  if(pendingPickup) place(pendingPickup, 'pending', 'Pending pickup');
+  if(pendingDrop) place(pendingDrop, 'pending', 'Pending dropoff');
+}
+
+function renderTripline(check){
+  const tripline = document.getElementById('tripline');
+  tripline.innerHTML = '';
+  if(route.length < 2){ return; }
+  const maxOcc = Math.max(1, ...check.passengerCounts);
+  route.forEach((node,i)=>{
+    const isTerminal = i===0 || i===route.length-1;
+    const occ = check.passengerCounts[i] ?? 0;
+    const barHeight = 6 + (occ/maxOcc)*34;
+    const stop = document.createElement('div');
+    stop.className = 'stop' + (isTerminal?' terminal':'');
+    const kindLabel = i===0 ? 'start' : (i===route.length-1 ? 'end' : node.kind);
+    stop.innerHTML = `
+      <div class="occ-bar" style="height:${barHeight}px"></div>
+      <div class="occ-num">${occ}</div>
+      <div class="rail"></div>
+      <div class="node"></div>
+      <div class="stop-label">${node.label || node.id}</div>
+      <div class="stop-sub">${kindLabel}</div>`;
+    tripline.appendChild(stop);
+  });
+}
+
+function renderRouteAndStats(){
+  const check = route.length > 1
+    ? validateDynamicConstraints(route, manifest, capacity)
+    : {passengerCounts:[]};
+  const dist = route.length > 1 ? computeRouteDistance(route) : 0;
+  document.getElementById('stat-dist').textContent = dist.toFixed(2) + ' km';
+  document.getElementById('stat-accepted').textContent = acceptedList.length;
+  document.getElementById('stat-rejected').textContent = rejectedList.length;
+  document.getElementById('stat-cancelled').textContent = cancelledList.length;
+
+  const list = document.getElementById('route-list');
+  list.innerHTML = '';
+  if(route.length < 2){
+    list.innerHTML = '<li class="empty-note">set source &amp; destination to begin</li>';
+  } else {
+    route.forEach((node,i)=>{
+      const occ = check.passengerCounts[i] ?? 0;
+      const li = document.createElement('li');
+      const kindLabel = node.kind==='source' ? 'start' : node.kind==='destination' ? 'end' : node.kind;
+      li.innerHTML = `<span>${i+1}. ${node.label||node.id} <span class="kind-tag">${kindLabel}</span></span><span class="occ">${occ} 🧍</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  if(MODE === 'geo'){
+    if(route.length > 1){
+      routeLine.setLatLngs(route.map(n=>[n.lat,n.lng]));
+      map.fitBounds(routeLine.getBounds().pad(0.25));
+      const el = routeLine.getElement && routeLine.getElement();
+      if(el) el.classList.add('flow-line');
+    } else { routeLine.setLatLngs([]); }
+  } else {
+    renderTripline(check);
+  }
+}
+
+function renderManifestList(){
+  const list = document.getElementById('manifest-list');
+  list.innerHTML = '';
+  const active = Object.values(manifest);
+  if(active.length === 0){
+    list.innerHTML = '<li class="empty-note" style="list-style:none;">no requests on board yet</li>';
+    return;
+  }
+  active.forEach(req=>{
+    const li = document.createElement('li');
+    li.className = 'manifest-item';
+    const pLabel = req.pickup.label || req.pickup.id;
+    const dLabel = req.drop.label || req.drop.id;
+    li.innerHTML = `
+      <span>
+        <span class="mi-label">${req.id}</span> &nbsp;${pLabel} → ${dLabel}
+        <div class="mi-sub">${req.dist.toFixed(1)}km base · Δ${req.flex}</div>
+      </span>
+      <button class="cancel-btn" data-id="${req.id}" title="Cancel this request">×</button>
+    `;
+    li.querySelector('.cancel-btn').addEventListener('click', e=>cancelRequest(e.currentTarget.dataset.id));
+    list.appendChild(li);
+  });
+}
+
+function renderAll(){ renderMarkers(); renderRouteAndStats(); renderManifestList(); }
+
+/* =========================================================
+   CAPACITY
+   ========================================================= */
+document.getElementById('capacity').addEventListener('change', e=>{ capacity = parseFloat(e.target.value) || 1; });
+
+/* =========================================================
+   LIVE SIMULATION (geo mode only)
+   ========================================================= */
+function randomNearby(center, radiusKm){
+  const r = radiusKm / 111;
+  const angle = Math.random()*Math.PI*2, rad = Math.random()*r;
+  return {lat: center.lat + rad*Math.cos(angle), lng: center.lng + rad*Math.sin(angle)};
+}
+function spawnRandomRequest(){
+  if(!source || !destination) return;
+  const center = {lat:(source.lat+destination.lat)/2, lng:(source.lng+destination.lng)/2};
+  const pickup = {id:mkId('P'), kind:'pickup', label:'P', ...randomNearby(center,1.2)};
+  const drop = {id:mkId('D'), kind:'drop', label:'D', ...randomNearby(center,1.2)};
+  const dist = haversineKm(pickup, drop) * ROAD_FACTOR;
+  processRequest({id:mkId('REQ'), pickup, drop, dist, flex: 1 + Math.random()*2});
+}
+document.getElementById('sim-toggle').addEventListener('click', (e)=>{
+  simRunning = !simRunning;
+  const btn=e.target, dot=document.getElementById('live-dot'), text=document.getElementById('live-text');
+  if(simRunning){
+    if(!source || !destination){ alert('Set a Source and Destination first.'); simRunning=false; return; }
+    btn.textContent='⏸ Stop'; btn.classList.add('active'); dot.classList.add('on'); text.textContent='live';
+    simTimer = setInterval(spawnRandomRequest, 2200);
+  } else {
+    btn.textContent='▶ Start'; btn.classList.remove('active'); dot.classList.remove('on'); text.textContent='idle';
+    clearInterval(simTimer);
+  }
+});
+document.getElementById('reset-btn').addEventListener('click', ()=>{
+  simRunning=false; clearInterval(simTimer);
+  document.getElementById('sim-toggle').textContent='▶ Start';
+  document.getElementById('sim-toggle').classList.remove('active');
+  document.getElementById('live-dot').classList.remove('on');
+  document.getElementById('live-text').textContent='idle';
+  source=null; destination=null; route=[]; manifest={};
+  acceptedList=[]; rejectedList=[]; cancelledList=[]; pendingPickup=null; pendingDrop=null;
+  document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
+  updateReqPreview(); renderAll();
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+initMap();
+source = {id:'SOURCE', kind:'source', label:'S', lat:27.5530, lng:76.6346};
+destination = {id:'DEST', kind:'destination', label:'E', lat:27.5730, lng:76.6580};
+route = [source, destination];
+renderAll();
+</script>
+</body>
+</html>
