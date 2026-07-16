@@ -4,272 +4,518 @@
 <meta charset="UTF-8">
 <title>Route Dispatch — Live Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
-  :root{
-    --ink:#141822; --ink2:#1A1F2B;
-    --panel: rgba(36,44,58,0.72); --panel-solid:#242C3A; --panel-raised:#2E3849;
-    --hairline: rgba(255,255,255,0.08); --hairline-strong: rgba(255,255,255,0.14);
-    --chalk:#F4F5F7; --dim:#8D97AC;
-    --amber:#FFA53E; --amber-glow: rgba(255,165,62,0.35);
-    --teal:#3FD4B8; --teal-dim: rgba(63,212,184,0.14);
-    --rose:#FF6B6B; --rose-dim: rgba(255,107,107,0.14);
-    --violet:#8B7CF6;
-    --grad-hero: linear-gradient(135deg, #1B2030 0%, #232A3D 55%, #1B2030 100%);
+  :root {
+    /* Color Palette */
+    --bg-app: #f8fafc;           /* Light slate background */
+    --bg-card: #ffffff;          /* Pure white cards */
+    --border-light: #e2e8f0;     /* Subtle divider line */
+    --border-hover: #cbd5e1;     /* Border focus */
+    --text-primary: #0f172a;     /* Deep slate text */
+    --text-secondary: #475569;   /* Subdued text */
+    --text-muted: #94a3b8;       /* Disabled/hint text */
+    
+    /* Accents */
+    --primary: #2563eb;          /* SaaS Blue */
+    --primary-light: #eff6ff;    /* Selected backgrounds */
+    --success: #10b981;          /* Emerald Green */
+    --success-light: #ecfdf5;
+    --danger: #ef4444;           /* Crimson Red */
+    --danger-light: #fef2f2;
+    --warning: #f59e0b;          /* Amber Yellow */
+    --warning-light: #fef3c7;
+    --accent: #6366f1;           /* Indigo */
+
+    /* Typography */
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    background:
-      radial-gradient(1200px 600px at 15% -10%, rgba(255,165,62,0.08), transparent 60%),
-      radial-gradient(1000px 700px at 100% 10%, rgba(63,212,184,0.07), transparent 55%),
-      var(--ink);
-    color:var(--chalk); font-family:'Space Grotesk',sans-serif; -webkit-font-smoothing:antialiased;
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  
+  .mono { font-family: var(--font-mono); }
+
+  /* App Structure */
+  .app {
+    display: grid;
+    grid-template-columns: 360px 1fr 340px;
+    grid-template-rows: 70px 1fr;
+    height: 100vh;
   }
-  .mono{font-family:'IBM Plex Mono',monospace;}
-
-  @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
-  @keyframes popIn{ 0%{ transform:scale(0.4); opacity:0; } 70%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); } }
-  @keyframes softPulse{ 0%{ box-shadow:0 0 0 0 rgba(63,212,184,.55); } 70%{ box-shadow:0 0 0 10px rgba(63,212,184,0); } 100%{ box-shadow:0 0 0 0 rgba(63,212,184,0); } }
-  @keyframes shimmer{ 0%{ background-position:0% 50%; } 100%{ background-position:200% 50%; } }
-  @keyframes toastIn{ from{ opacity:0; transform:translateX(24px) scale(0.97); } to{ opacity:1; transform:translateX(0) scale(1); } }
-  @keyframes toastOut{ from{ opacity:1; transform:translateX(0); } to{ opacity:0; transform:translateX(24px); } }
-
-  .app{ display:grid; grid-template-columns:360px 1fr 320px; grid-template-rows:60px 1fr; height:100vh; }
-  @media (max-width:1050px){ .app{ grid-template-columns:1fr; grid-template-rows:auto auto 420px auto; height:auto; } }
-
-  .topbar{
-    grid-column:1/4; display:flex; align-items:center; justify-content:space-between;
-    padding:0 22px; border-bottom:1px solid var(--hairline-strong); background:var(--grad-hero); flex-wrap:wrap; gap:10px;
-    box-shadow:0 2px 20px rgba(0,0,0,0.25);
+  @media (max-width: 1200px) {
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto 500px auto;
+      height: auto;
+    }
   }
-  @media (max-width:1050px){ .topbar{grid-column:1;} }
-  .topbar h1{ font-size:16px; letter-spacing:0.03em; text-transform:uppercase; margin:0; font-weight:700; }
-  .topbar h1 .tag{ background:linear-gradient(90deg,var(--amber),#FFC978); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .topbar .sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0; }
-  .clock{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--dim); letter-spacing:0.04em; min-width:78px; }
-  .clock b{ color:var(--chalk); font-weight:600; }
 
-  .mode-tabs{ display:flex; gap:4px; background:rgba(0,0,0,0.25); border:1px solid var(--hairline-strong); border-radius:8px; padding:3px; backdrop-filter:blur(6px); }
-  .mode-tab{
-    background:none; border:none; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px;
-    padding:8px 14px; border-radius:6px; cursor:pointer; transition:all .18s ease;
+  /* Top Bar Navigation */
+  .topbar {
+    grid-column: 1 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-card);
+    z-index: 100;
   }
-  .mode-tab:hover{ color:var(--chalk); }
-  .mode-tab.active{ background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; font-weight:700; box-shadow:0 2px 10px var(--amber-glow); }
-
-  .live-pill{ display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim);
-    background:rgba(0,0,0,0.2); padding:6px 12px; border-radius:20px; border:1px solid var(--hairline-strong); }
-  .live-dot{ width:8px;height:8px;border-radius:50%; background:var(--dim); }
-  .live-dot.on{ background:var(--teal); animation:softPulse 1.6s infinite; }
-  .cap-field{ display:flex; align-items:center; gap:8px; }
-  .cap-field label{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); }
-  .cap-field input{ width:52px; background:var(--ink); border:1px solid var(--hairline); color:var(--chalk); font-family:'IBM Plex Mono',monospace; font-size:13px; padding:5px 6px; border-radius:3px; }
-
-  .sidebar{ overflow-y:auto; border-right:1px solid var(--hairline); padding:18px; background:var(--ink2); }
-  .panel{
-    background:var(--panel); backdrop-filter:blur(10px); border:1px solid var(--hairline);
-    border-radius:10px; padding:16px 18px; margin-bottom:16px; box-shadow:0 4px 18px rgba(0,0,0,0.18);
-    transition:border-color .2s ease;
+  @media (max-width: 1200px) { .topbar { grid-column: 1; } }
+  
+  .topbar h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .panel:hover{ border-color:var(--hairline-strong); }
-  .panel h2{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); margin:0 0 13px 0; display:flex; align-items:center; gap:8px; }
-  .panel h2::before{ content:''; width:7px;height:7px;background:linear-gradient(135deg,var(--amber),#FF8A3D);border-radius:2px;display:inline-block; box-shadow:0 0 8px var(--amber-glow); }
-
-  .mode-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
-  .mode-btn{ background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px 6px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; text-align:center; transition:all .15s ease; }
-  .mode-btn:hover{ border-color:var(--hairline-strong); transform:translateY(-1px); }
-  .mode-btn.armed{ background:var(--teal-dim); border-color:var(--teal); color:var(--teal); box-shadow:0 0 12px rgba(63,212,184,0.25); }
-  .mode-btn.source.armed, .mode-btn.destination.armed{ background:rgba(255,165,62,0.14); border-color:var(--amber); color:var(--amber); box-shadow:0 0 12px var(--amber-glow); }
-  .hint{ font-size:11px; color:var(--dim); font-family:'IBM Plex Mono',monospace; line-height:1.55; margin-bottom:10px;}
-
-  .subtabs{ display:flex; gap:6px; margin-bottom:10px; }
-  .subtab{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--dim); padding:6px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; cursor:pointer; text-align:center; }
-  .subtab.active{ border-color:var(--amber); color:var(--amber); }
-
-  .coord-row{ display:flex; gap:8px; margin-bottom:8px; }
-  .coord-row input{ flex:1; min-width:0; }
-  .coord-row button{ white-space:nowrap; }
-
-  .req-preview{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:11px 12px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); margin-bottom:10px; }
-  .req-preview b{ color:var(--chalk); }
-  .field-row{ display:flex; gap:10px; margin-bottom:10px; }
-  .field-row > div{ flex:1; }
-  label.field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--dim); display:block; margin-bottom:5px; }
-  input[type=text], input[type=number], select{
-    width:100%; background:rgba(0,0,0,0.22); border:1px solid var(--hairline); color:var(--chalk);
-    font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 10px; border-radius:6px; transition:border-color .15s ease;
+  .topbar h1 .tag {
+    color: var(--primary);
   }
-  input[type=text]:focus, input[type=number]:focus, select:focus{ outline:none; border-color:var(--amber); box-shadow:0 0 0 3px rgba(255,165,62,0.12); }
-  select{ appearance:none; }
-  .small-btn{
-    background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk);
-    padding:9px 11px; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease;
+  .topbar .sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 6px;
   }
-  .small-btn:hover{ border-color:var(--teal); color:var(--teal); transform:translateY(-1px); }
-  .submit-btn{
-    width:100%; background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; border:none; padding:12px;
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.04em;
-    text-transform:uppercase; border-radius:8px; cursor:pointer; box-shadow:0 4px 16px var(--amber-glow); transition:all .15s ease;
+
+  .clock {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
   }
-  .submit-btn:disabled{ opacity:0.3; cursor:not-allowed; box-shadow:none; }
-  .submit-btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 6px 22px var(--amber-glow); }
-  .submit-btn:active:not(:disabled){ transform:translateY(0); }
+  .clock b { color: var(--text-primary); font-weight: 600; }
 
-  .sim-row{ display:flex; gap:8px; }
-  .sim-btn{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease; }
-  .sim-btn:hover{ transform:translateY(-1px); }
-  .sim-btn.active{ border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
-  .sim-btn.reset:hover{ border-color:var(--rose); color:var(--rose); }
-
-  .map-col{ position:relative; }
-  #map{ width:100%; height:100%; }
-  .leaflet-div-icon{ background:transparent; border:none; }
-  .flow-line{ stroke-dasharray:10 7; animation:dashflow 0.9s linear infinite; }
-  @keyframes dashflow{ to{ stroke-dashoffset:-17; } }
-
-  /* ---- Matrix mode ---- */
-  .loc-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-  .loc-chip{
-    display:flex; align-items:center; gap:6px; background:var(--panel-raised); border:1px solid var(--hairline);
-    border-radius:14px; padding:5px 10px 5px 13px; font-family:'IBM Plex Mono',monospace; font-size:11px;
-    animation:popIn .25s ease;
+  /* Tabs Styling */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 4px;
   }
-  .loc-chip button{ background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; line-height:1; padding:0; }
-  .loc-chip button:hover{ color:var(--rose); }
-  .add-loc-row{ display:flex; gap:8px; }
-  .add-loc-row input{ flex:1; }
-
-  .matrix-wrap{ overflow-x:auto; margin-top:4px; }
-  table.matrix{ border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
-  table.matrix th, table.matrix td{ padding:4px 5px; text-align:center; border:1px solid var(--hairline); }
-  table.matrix th{ color:var(--amber); background:var(--panel-raised); font-weight:600; min-width:40px; }
-  table.matrix td.diag{ color:var(--dim); background:var(--panel-raised); }
-  table.matrix td input{ width:46px; padding:4px 3px; text-align:center; font-size:11.5px; border:none; background:transparent; border-radius:4px; }
-  table.matrix td input:focus{ background:rgba(255,165,62,0.1); box-shadow:none; }
-
-  .schematic-col{ display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; }
-  .tripline-wrap{ width:100%; overflow-x:auto; padding:10px 4px; }
-  .tripline{ position:relative; display:flex; align-items:flex-end; min-width:min-content; padding-top:26px; }
-  .stop{ position:relative; display:flex; flex-direction:column; align-items:center; min-width:82px; flex:1; animation:popIn .3s ease; }
-  .stop .rail{ position:absolute; top:14px; left:50%; width:100%; height:2px; background:linear-gradient(90deg,var(--amber),#FFC978); z-index:0; }
-  .stop:first-child .rail{ left:50%; width:50%; }
-  .stop:last-child .rail{ width:50%; }
-  .stop .node{ width:13px;height:13px; border-radius:50%; background:var(--panel-raised); border:2px solid var(--amber); z-index:1; margin-bottom:8px; box-shadow:0 0 10px var(--amber-glow); }
-  .stop.terminal .node{ background:var(--amber); width:16px;height:16px; }
-  .stop .occ-bar{ width:24px; background:linear-gradient(180deg,#5CEBD1,var(--teal)); border-radius:4px 4px 0 0; margin-bottom:6px; }
-  .stop .occ-num{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--teal); margin-top:-4px; margin-bottom:4px; }
-  .stop .stop-label{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--chalk); text-align:center; }
-  .stop .stop-sub{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
-
-  .rightbar{ overflow-y:auto; border-left:1px solid var(--hairline); padding:18px; background:var(--ink2); }
-  .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .stat-box{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:10px 12px; transition:transform .15s ease; }
-  .stat-box .stat-label{ font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); margin-bottom:3px;}
-  .stat-box .stat-value{ font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:600; transition:color .2s ease; }
-  .stat-box.accent .stat-value{ color:var(--amber); }
-  .stat-box.flash{ transform:scale(1.04); }
-
-  .route-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
-  .route-list li{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--hairline); animation:fadeSlideIn .25s ease; }
-  .route-list li:last-child{ border-bottom:none; }
-  .route-list .occ{ color:var(--teal); font-weight:600; }
-  .route-list .kind-tag{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
-
-  .manifest-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:6px; }
-  .manifest-item{
-    display:flex; justify-content:space-between; align-items:center; padding:8px 10px;
-    background:var(--teal-dim); border-left:3px solid var(--teal); border-radius:6px; animation:fadeSlideIn .25s ease;
+  .mode-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
-  .manifest-item .mi-label{ color:var(--chalk); }
-  .manifest-item .mi-sub{ color:var(--dim); font-size:10px; }
-  .cancel-btn{
-    background:rgba(255,107,107,0.12); border:1px solid transparent; color:var(--rose); width:24px; height:24px;
-    border-radius:50%; cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
-    transition:all .15s ease;
+  .mode-tab:hover { color: var(--text-primary); }
+  .mode-tab.active {
+    background: var(--bg-card);
+    color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+    font-weight: 600;
   }
-  .cancel-btn:hover{ background:var(--rose); color:#fff; transform:scale(1.08); }
 
-  .feed{ display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:10.8px; }
-  .feed-item{ padding:8px 10px; border-radius:7px; border-left:3px solid var(--hairline); background:var(--panel-raised); animation:fadeSlideIn .3s ease; }
-  .feed-item.ok{ border-left-color:var(--teal); }
-  .feed-item.no{ border-left-color:var(--rose); }
-  .feed-item.cancel{ border-left-color:var(--violet); }
-  .feed-item .ts{ color:var(--dim); margin-right:6px; }
-  .feed-item .reason{ color:var(--rose); }
-  .empty-note{ color:var(--dim); font-size:11.5px; font-family:'IBM Plex Mono',monospace; }
-  .hidden{ display:none !important; }
-
-  /* ---- Toasts ---- */
-  #toast-stack{ position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
-  .toast{
-    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--chalk); background:var(--panel-solid);
-    border:1px solid var(--hairline-strong); border-left:4px solid var(--teal); padding:11px 16px; border-radius:8px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.35); animation:toastIn .25s ease; max-width:320px;
+  /* Live Dot */
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-light);
   }
-  .toast.no{ border-left-color:var(--rose); }
-  .toast.cancel{ border-left-color:var(--violet); }
-  .toast.leaving{ animation:toastOut .25s ease forwards; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .live-dot.on { background: var(--success); animation: softPulse 1.6s infinite; }
+
+  @keyframes softPulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  .cap-field { display: flex; align-items: center; gap: 8px; }
+  .cap-field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+  .cap-field input {
+    width: 60px;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .cap-field input:focus { border-color: var(--primary); }
+
+  /* Grid Sidebars */
+  .sidebar, .rightbar {
+    overflow-y: auto;
+    padding: 24px;
+    background: var(--bg-app);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .sidebar { border-right: 1px solid var(--border-light); }
+  .rightbar { border-left: 1px solid var(--border-light); }
+
+  /* Cards Styling */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .panel:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+  .panel h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .panel h2::before {
+    content: '';
+    width: 6px;
+    height: 12px;
+    background: var(--primary);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* Dashboard Controls Layout */
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .mode-btn {
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .mode-btn:hover { border-color: var(--border-hover); background: #f1f5f9; color: var(--text-primary); }
+  .mode-btn.armed {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .mode-btn.source.armed, .mode-btn.destination.armed {
+    background: var(--warning-light);
+    border-color: var(--warning);
+    color: #92400e;
+  }
+  .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px; }
+
+  .coord-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .coord-row input { flex: 1; min-width: 0; }
+  .coord-row button { white-space: nowrap; }
+
+  .req-preview {
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  .req-preview b { color: var(--text-primary); }
+  
+  .field-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .field-row > div { flex: 1; }
+  label.field-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+  
+  input[type=text], input[type=number], select {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .small-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .small-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 12px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .submit-btn:disabled { background: var(--border-light); color: var(--text-muted); cursor: not-allowed; }
+  .submit-btn:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-1px); }
+
+  /* Simulations Row */
+  .sim-row { display: flex; gap: 8px; }
+  .sim-btn {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .sim-btn:hover { border-color: var(--border-hover); background: var(--bg-app); }
+  .sim-btn.active { border-color: var(--success); color: var(--success); background: var(--success-light); font-weight: 600; }
+  .sim-btn.reset:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
+
+  /* Center Column: Map Column & Schematics */
+  .map-col { position: relative; border-right: 1px solid var(--border-light); background: #ffffff; }
+  #map { width: 100%; height: 100%; }
+  
+  .schematic-col { display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; background: var(--bg-app); }
+  .tripline-wrap { width: 100%; max-width: 800px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .tripline { position: relative; display: flex; align-items: flex-end; min-width: min-content; padding-top: 26px; }
+  .stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 90px; flex: 1; }
+  .stop .rail { position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--primary); z-index: 0; }
+  .stop:first-child .rail { left: 50%; width: 50%; }
+  .stop:last-child .rail { width: 50%; }
+  .stop .node { width: 14px; height: 14px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--primary); z-index: 1; margin-bottom: 8px; }
+  .stop.terminal .node { background: var(--primary); width: 18px; height: 18px; }
+  .stop .occ-bar { width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; margin-bottom: 6px; }
+  .stop .occ-num { font-family: var(--font-mono); font-size: 10px; color: var(--accent); margin-top: -4px; margin-bottom: 4px; font-weight: 600; }
+  .stop .stop-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); text-align: center; font-weight: 500; }
+  .stop .stop-sub { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  /* Matrix Table Styling */
+  .loc-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .loc-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    padding: 4px 10px 4px 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-primary);
+  }
+  .loc-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .loc-chip button:hover { color: var(--danger); }
+  .add-loc-row { display: flex; gap: 8px; }
+  .add-loc-row input { flex: 1; }
+
+  .matrix-wrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; }
+  table.matrix { border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; width: 100%; background: var(--bg-card); }
+  table.matrix th, table.matrix td { padding: 8px 10px; text-align: center; border: 1px solid var(--border-light); }
+  table.matrix th { color: var(--text-secondary); background: var(--bg-app); font-weight: 600; min-width: 44px; }
+  table.matrix td.diag { color: var(--text-muted); background: var(--bg-app); }
+  table.matrix td input { width: 50px; padding: 4px; text-align: center; font-size: 12px; border: 1px solid transparent; background: transparent; border-radius: 4px; }
+  table.matrix td input:focus { border-color: var(--primary); background: var(--bg-card); outline: none; }
+
+  /* Real-time Diagnostics (Right column) */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-box { background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; }
+  .stat-box .stat-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px; }
+  .stat-box .stat-value { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .stat-box.accent .stat-value { color: var(--primary); }
+
+  .route-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 12px; }
+  .route-list li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
+  .route-list li:last-child { border-bottom: none; }
+  .route-list .occ { color: var(--accent); font-weight: 600; }
+  .route-list .kind-tag { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-left: 6px; }
+
+  /* Active Manifest List */
+  .manifest-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .manifest-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-app);
+    border-left: 3px solid var(--primary);
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+    border-radius: 8px;
+  }
+  .manifest-item .mi-label { color: var(--text-primary); font-weight: 600; }
+  .manifest-item .mi-sub { color: var(--text-secondary); font-size: 10px; margin-top: 2px; }
+  
+  .cancel-btn {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    color: var(--danger);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .cancel-btn:hover { background: var(--danger); color: #ffffff; border-color: var(--danger); }
+
+  /* Terminal & Event Feeds */
+  .feed { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: 11px; }
+  .feed-item { padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--border-light); background: var(--bg-app); }
+  .feed-item.ok { border-left-color: var(--success); background: var(--success-light); }
+  .feed-item.no { border-left-color: var(--danger); background: var(--danger-light); }
+  .feed-item.cancel { border-left-color: var(--accent); background: #f5f3ff; }
+  .feed-item .ts { color: var(--text-muted); margin-right: 6px; }
+  .feed-item .reason { color: var(--danger); font-weight: 500; }
+  .empty-note { color: var(--text-muted); font-size: 12px; font-style: italic; }
+  
+  .hidden { display: none !important; }
+
+  /* Map Visualizer Lines Override */
+  .flow-line { stroke-dasharray: 8 6; animation: dashflow 0.8s linear infinite; }
+  @keyframes dashflow { to { stroke-dashoffset: -14; } }
+
+  /* Toasts Notification Stack */
+  #toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .toast {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-left: 4px solid var(--success);
+    padding: 12px 18px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    animation: toastIn 0.2s ease-out;
+    max-width: 320px;
+  }
+  .toast.no { border-left-color: var(--danger); }
+  .toast.cancel { border-left-color: var(--accent); }
+  .toast.leaving { animation: toastOut 0.2s ease-in forwards; }
+
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
 </style>
 </head>
 <body>
 <div class="app">
 
+  <!-- TOP BRANDING & SETTINGS NAV -->
   <div class="topbar">
-    <h1>Route <span class="tag">Dispatch</span> <span class="sub">— live console</span></h1>
+    <h1>Route <span class="tag">Dispatch</span> <span class="sub">— Live Console</span></h1>
     <div class="mode-tabs">
       <button class="mode-tab active" id="tab-geo">🗺️ Map / Coordinates</button>
       <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
     </div>
-    <div style="display:flex; align-items:center; gap:18px;">
+    <div style="display:flex; align-items:center; gap:16px;">
       <div class="clock" id="clock">--:--:--</div>
       <div class="cap-field"><label>Capacity</label><input type="number" id="capacity" value="3" min="1"></div>
       <div class="live-pill"><span class="live-dot" id="live-dot"></span><span id="live-text">idle</span></div>
     </div>
   </div>
 
-  <!-- ================= LEFT SIDEBAR ================= -->
+  <!-- LEFT SIDEBAR: INPUT CONTROLS -->
   <div class="sidebar">
 
-    <!-- ---- GEO MODE PANELS ---- -->
+    <!-- GEO MODE INPUT PANELS -->
     <div id="geo-panels">
       <div class="panel">
         <h2>Anchors</h2>
-        <div class="hint">Place Source / Destination by map click or exact coordinates.</div>
+        <div class="hint">Place Source / Destination on the map or type exact coordinates below.</div>
         <div class="mode-grid">
-          <button class="mode-btn source" id="mode-source">📍 Click: Source</button>
-          <button class="mode-btn destination" id="mode-destination">🏁 Click: Destination</button>
+          <button class="mode-btn source" id="mode-source">📍 Set Source</button>
+          <button class="mode-btn destination" id="mode-destination">🏁 Set Destination</button>
         </div>
         <div class="coord-row">
-          <input type="number" step="0.0001" id="src-lat" placeholder="source lat">
-          <input type="number" step="0.0001" id="src-lng" placeholder="source lng">
-          <button class="small-btn" id="src-set-coord">Set</button>
+          <input type="number" step="0.0001" id="src-lat" placeholder="Source Lat">
+          <input type="number" step="0.0001" id="src-lng" placeholder="Source Lng">
+          <button class="small-btn" id="src-set-coord">Apply</button>
         </div>
         <div class="coord-row">
-          <input type="number" step="0.0001" id="dst-lat" placeholder="dest lat">
-          <input type="number" step="0.0001" id="dst-lng" placeholder="dest lng">
-          <button class="small-btn" id="dst-set-coord">Set</button>
+          <input type="number" step="0.0001" id="dst-lat" placeholder="Dest Lat">
+          <input type="number" step="0.0001" id="dst-lng" placeholder="Dest Lng">
+          <button class="small-btn" id="dst-set-coord">Apply</button>
         </div>
       </div>
 
       <div class="panel">
         <h2>New Request</h2>
-        <div class="hint">Arm pickup/dropoff + click the map, or type exact coordinates below.</div>
+        <div class="hint">Arm pickup/dropoff + click map, or supply raw coordinates.</div>
         <div class="mode-grid">
-          <button class="mode-btn pickup" id="mode-pickup">🟢 Click: Pickup</button>
-          <button class="mode-btn drop" id="mode-drop">🔷 Click: Dropoff</button>
+          <button class="mode-btn pickup" id="mode-pickup">🟢 Set Pickup</button>
+          <button class="mode-btn drop" id="mode-drop">🔷 Set Dropoff</button>
         </div>
         <div class="coord-row">
-          <input type="number" step="0.0001" id="pu-lat" placeholder="pickup lat">
-          <input type="number" step="0.0001" id="pu-lng" placeholder="pickup lng">
-          <button class="small-btn" id="pu-set-coord">Set</button>
+          <input type="number" step="0.0001" id="pu-lat" placeholder="Pickup Lat">
+          <input type="number" step="0.0001" id="pu-lng" placeholder="Pickup Lng">
+          <button class="small-btn" id="pu-set-coord">Apply</button>
         </div>
         <div class="coord-row">
-          <input type="number" step="0.0001" id="dr-lat" placeholder="dropoff lat">
-          <input type="number" step="0.0001" id="dr-lng" placeholder="dropoff lng">
-          <button class="small-btn" id="dr-set-coord">Set</button>
+          <input type="number" step="0.0001" id="dr-lat" placeholder="Dropoff Lat">
+          <input type="number" step="0.0001" id="dr-lng" placeholder="Dropoff Lng">
+          <button class="small-btn" id="dr-set-coord">Apply</button>
         </div>
         <div class="req-preview" id="req-preview">pickup: <b>—</b> &nbsp; dropoff: <b>—</b><br>base distance: <b>—</b></div>
         <div class="field-row">
@@ -280,32 +526,32 @@
 
       <div class="panel">
         <h2>Live Simulation</h2>
-        <div class="hint">Auto-generate nearby requests to stress-test the live dispatcher.</div>
+        <div class="hint">Auto-generate simulated ride requests inside the current operational zone.</div>
         <div class="sim-row">
           <button class="sim-btn" id="sim-toggle">▶ Start</button>
-          <button class="sim-btn reset" id="reset-btn">⟲ Reset</button>
+          <button class="sim-btn reset" id="reset-btn">⟲ Reset All</button>
         </div>
       </div>
     </div>
 
-    <!-- ---- MATRIX MODE PANELS ---- -->
+    <!-- MATRIX MODE INPUT PANELS -->
     <div id="matrix-panels" class="hidden">
       <div class="panel">
         <h2>Anchors</h2>
-        <div class="hint">Name the Source and Destination nodes for the matrix.</div>
+        <div class="hint">Name the Source and Destination nodes for the custom routing matrix.</div>
         <div class="field-row">
           <div><label class="field-label">Source ID</label><input type="text" id="mx-src-id" value="S"></div>
           <div><label class="field-label">Destination ID</label><input type="text" id="mx-dst-id" value="E"></div>
         </div>
-        <button class="small-btn" id="mx-apply-anchors" style="width:100%;">Apply Anchors</button>
+        <button class="small-btn" id="mx-apply-anchors" style="width:100%;">Apply Anchor Labels</button>
       </div>
 
       <div class="panel">
         <h2>Locations</h2>
-        <div class="hint">Add every pickup / dropoff node that will appear in requests.</div>
+        <div class="hint">Incorporate pickup or dropoff nodes into the matrix array.</div>
         <div class="loc-chip-row" id="loc-chip-row"></div>
         <div class="add-loc-row">
-          <input type="text" id="new-loc-id" placeholder="e.g. P1">
+          <input type="text" id="new-loc-id" placeholder="e.g., P1">
           <button class="small-btn" id="add-loc-btn">+ Add</button>
         </div>
       </div>
@@ -313,7 +559,7 @@
       <div class="panel">
         <h2>Distance Matrix (km)</h2>
         <div class="matrix-wrap" id="matrix-wrap"></div>
-        <div class="hint" style="margin-top:8px; margin-bottom:0;">edits mirror across the diagonal — symmetric distances assumed</div>
+        <div class="hint" style="margin-top:10px; margin-bottom:0; font-size:11px;">Symmetric distance assumed. Adjusting one side mirrors across the diagonal automatically.</div>
       </div>
 
       <div class="panel">
@@ -335,19 +581,19 @@
     </div>
   </div>
 
-  <!-- ================= CENTER: MAP or SCHEMATIC ================= -->
+  <!-- CENTER MAP & MATRIX SCHEMATICS -->
   <div class="map-col" id="map-col"><div id="map"></div></div>
   <div class="schematic-col hidden" id="schematic-col">
     <div class="tripline-wrap"><div class="tripline" id="tripline"></div></div>
   </div>
 
-  <!-- ================= RIGHT SIDEBAR ================= -->
+  <!-- RIGHT SIDEBAR: REAL-TIME DIAGNOSTICS & LOGS -->
   <div class="rightbar">
     <div class="panel">
-      <h2>Readout</h2>
+      <h2>Diagnostics Readout</h2>
       <div class="stats-grid">
-        <div class="stat-box accent"><div class="stat-label">Distance</div><div class="stat-value" id="stat-dist">0.0 km</div></div>
-        <div class="stat-box"><div class="stat-label">Last Op</div><div class="stat-value" id="stat-time">— ms</div></div>
+        <div class="stat-box accent"><div class="stat-label">Total Distance</div><div class="stat-value" id="stat-dist">0.0 km</div></div>
+        <div class="stat-box"><div class="stat-label">Last Operation</div><div class="stat-value" id="stat-time">— ms</div></div>
         <div class="stat-box"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">0</div></div>
         <div class="stat-box"><div class="stat-label">Rejected</div><div class="stat-value" id="stat-rejected">0</div></div>
         <div class="stat-box" style="grid-column:1/3;"><div class="stat-label">Cancelled</div><div class="stat-value" id="stat-cancelled">0</div></div>
@@ -355,15 +601,15 @@
     </div>
     <div class="panel">
       <h2>Active Manifest</h2>
-      <ul class="manifest-list" id="manifest-list"><li class="empty-note">no requests on board yet</li></ul>
+      <ul class="manifest-list" id="manifest-list"><li class="empty-note">No active transit requests</li></ul>
     </div>
     <div class="panel">
-      <h2>Route &amp; Passenger Count</h2>
-      <ul class="route-list" id="route-list"><li class="empty-note">set source &amp; destination to begin</li></ul>
+      <h2>Calculated Route Details</h2>
+      <ul class="route-list" id="route-list"><li class="empty-note">Set anchors to evaluate</li></ul>
     </div>
     <div class="panel">
-      <h2>Live Feed</h2>
-      <div class="feed" id="feed"><div class="empty-note">dispatch events will appear here</div></div>
+      <h2>System Event Feed</h2>
+      <div class="feed" id="feed"><div class="empty-note">Live dispatch events will stream here</div></div>
     </div>
   </div>
 
@@ -476,8 +722,8 @@ function insertRequestLive(route, manifest, newRequest, capacity){
       const check = validateDynamicConstraints(candidateRoute, testManifest, capacity);
       if(check.valid){
         sawAnyValid = true;
-        const increase = check.cost - baseRouteCost;
-        if(increase < minCostIncrease){ minCostIncrease = increase; bestRoute = candidateRoute; }
+        const width = check.cost - baseRouteCost;
+        if(width < minCostIncrease){ minCostIncrease = width; bestRoute = candidateRoute; }
       } else {
         lastFailReason = check.reason;
       }
@@ -587,16 +833,16 @@ const GridBackdrop = L.GridLayer.extend({
     const size = this.getTileSize();
     tile.width = size.x; tile.height = size.y;
     const ctx = tile.getContext('2d');
-    ctx.fillStyle = '#222A35'; ctx.fillRect(0,0,size.x,size.y);
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,size.x,size.y);
     const minor=32, major=128;
     for(let x=0;x<=size.x;x+=minor){
-      ctx.strokeStyle = (x%major===0) ? 'rgba(232,163,61,0.16)' : 'rgba(255,255,255,0.045)';
-      ctx.lineWidth = (x%major===0)?1.4:1;
+      ctx.strokeStyle = (x%major===0) ? '#cbd5e1' : '#f1f5f9';
+      ctx.lineWidth = (x%major===0)? 1.2 : 1;
       ctx.beginPath(); ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,size.y); ctx.stroke();
     }
     for(let y=0;y<=size.y;y+=minor){
-      ctx.strokeStyle = (y%major===0) ? 'rgba(232,163,61,0.16)' : 'rgba(255,255,255,0.045)';
-      ctx.lineWidth = (y%major===0)?1.4:1;
+      ctx.strokeStyle = (y%major===0) ? '#cbd5e1' : '#f1f5f9';
+      ctx.lineWidth = (y%major===0)? 1.2 : 1;
       ctx.beginPath(); ctx.moveTo(0,y+0.5); ctx.lineTo(size.x,y+0.5); ctx.stroke();
     }
     return tile;
@@ -607,21 +853,21 @@ function initMap(){
   map = L.map('map', {zoomControl:true}).setView(DEFAULT_CENTER, 13);
   new GridBackdrop({tileSize:256, minZoom:2, maxZoom:19}).addTo(map);
   map.attributionControl.setPrefix('offline coordinate grid — not real street imagery');
-  routeLine = L.polyline([], {color:'#E8A33D', weight:4, opacity:0.9}).addTo(map);
+  routeLine = L.polyline([], {color:'#2563eb', weight:4, opacity:0.85}).addTo(map);
   map.on('click', onMapClick);
 }
 
 function iconFor(kind){
   const palette = {
-    source:{bg:'#E8A33D', border:'#E8A33D', text:'#211705', size:30, label:'S'},
-    destination:{bg:'#211705', border:'#E8A33D', text:'#E8A33D', size:30, label:'E'},
-    pickup:{bg:'#4FA9A2', border:'#4FA9A2', text:'#0E1F1E', size:24, label:'P'},
-    drop:{bg:'#1E3B39', border:'#4FA9A2', text:'#4FA9A2', size:24, label:'D'},
-    pending:{bg:'transparent', border:'#8D97A8', text:'#8D97A8', size:22, label:'?'}
+    source:{bg:'#f59e0b', border:'#f59e0b', text:'#ffffff', size:30, label:'S'},
+    destination:{bg:'#1e293b', border:'#1e293b', text:'#ffffff', size:30, label:'E'},
+    pickup:{bg:'#10b981', border:'#10b981', text:'#ffffff', size:24, label:'P'},
+    drop:{bg:'#3b82f6', border:'#3b82f6', text:'#ffffff', size:24, label:'D'},
+    pending:{bg:'transparent', border:'#94a3b8', text:'#94a3b8', size:22, label:'?'}
   };
   const p = palette[kind];
   return L.divIcon({
-    html:`<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:${p.size>26?11:9.5}px;font-weight:600;color:${p.text};box-shadow:0 2px 10px rgba(0,0,0,.45), 0 0 14px ${p.border}55;">${p.label}</div>`,
+    html:`<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-size:${p.size>26?12:10}px;font-weight:700;color:${p.text};box-shadow:0 3px 8px rgba(0,0,0,0.12), 0 0 0 2px rgba(255,255,255,1);">${p.label}</div>`,
     className:'', iconSize:[p.size,p.size], iconAnchor:[p.size/2,p.size/2]
   });
 }
@@ -754,7 +1000,7 @@ function renderMatrixLocations(){
     row.appendChild(chip);
   });
   if(mxLocations.length===0){
-    row.innerHTML = '<span class="hint" style="margin:0;">no locations yet — add pickup/dropoff IDs below</span>';
+    row.innerHTML = '<span class="hint" style="margin:0;">No locations defined. Create matrix nodes below.</span>';
   }
 }
 
@@ -807,7 +1053,7 @@ function renderMatrixRequestPreview(){
   const preview = document.getElementById('mx-req-preview');
   if(!p || !d || p===d){ preview.innerHTML = 'base distance (from matrix): <b>—</b>'; return; }
   const val = getMatrixDist(p,d);
-  preview.innerHTML = `base distance (from matrix): <b>${val.toFixed(2)} km</b> <span style="color:var(--dim)">(${p} → ${d})</span>`;
+  preview.innerHTML = `base distance (from matrix): <b>${val.toFixed(2)} km</b> <span style="color:var(--text-secondary)">(${p} → ${d})</span>`;
 }
 document.getElementById('mx-pickup').addEventListener('change', renderMatrixRequestPreview);
 document.getElementById('mx-drop').addEventListener('change', renderMatrixRequestPreview);
@@ -852,9 +1098,7 @@ function processRequest(req){
 }
 
 /* Cancel an already-accepted request: drop it from the manifest and remove
-   its pickup/drop stops from the route, preserving every other stop's order.
-   Removing a request can only reduce load on remaining riders, so the rest
-   of the manifest stays valid without needing to re-run the search. */
+   its pickup/drop stops from the route, preserving every other stop's order. */
 function cancelRequest(reqId){
   const req = manifest[reqId];
   if(!req) return;
@@ -880,7 +1124,7 @@ function cancelRequest(reqId){
 const REASON_TEXT = {
   capacity: 'exceeds vehicle capacity',
   chronology: "pickup/drop ordering invalid",
-  flexibility: 'exceeds a rider\'s detour flexibility (Δ)',
+  flexibility: 'exceeds detour threshold',
   'no-valid-slot': 'no valid insertion slot found'
 };
 
@@ -959,7 +1203,7 @@ function renderRouteAndStats(){
   const list = document.getElementById('route-list');
   list.innerHTML = '';
   if(route.length < 2){
-    list.innerHTML = '<li class="empty-note">set source &amp; destination to begin</li>';
+    list.innerHTML = '<li class="empty-note">Set source & destination to start mapping</li>';
   } else {
     route.forEach((node,i)=>{
       const occ = check.passengerCounts[i] ?? 0;
@@ -987,7 +1231,7 @@ function renderManifestList(){
   list.innerHTML = '';
   const active = Object.values(manifest);
   if(active.length === 0){
-    list.innerHTML = '<li class="empty-note" style="list-style:none;">no requests on board yet</li>';
+    list.innerHTML = '<li class="empty-note" style="list-style:none;">No active transit requests</li>';
     return;
   }
   active.forEach(req=>{
