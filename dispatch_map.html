@@ -2,34 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Route Dispatch — Live Console</title>
+<title>Route Dispatch — 3D Live Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<!-- Swapping Leaflet for MapLibre GL JS (WebGL-based 3D Rendering) -->
+<link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
 <style>
   :root {
-    /* Color Palette */
-    --bg-app: #f8fafc;           /* Light slate background */
-    --bg-card: #ffffff;          /* Pure white cards */
-    --border-light: #e2e8f0;     /* Subtle divider line */
-    --border-hover: #cbd5e1;     /* Border focus */
-    --text-primary: #0f172a;     /* Deep slate text */
-    --text-secondary: #475569;   /* Subdued text */
-    --text-muted: #94a3b8;       /* Disabled/hint text */
+    /* Refined Color Palette: Slate & Ocean */
+    --bg-app: #f1f5f9;           /* Light cool slate background */
+    --bg-card: #ffffff;          /* White floating panels */
+    --border-light: #e2e8f0;     /* Soft borders */
+    --border-hover: #cbd5e1;     
+    --text-primary: #0f172a;     /* Off-black slate text */
+    --text-secondary: #475569;   /* Slate secondary text */
+    --text-muted: #94a3b8;       
     
-    /* Accents */
-    --primary: #2563eb;          /* SaaS Blue */
-    --primary-light: #eff6ff;    /* Selected backgrounds */
-    --success: #10b981;          /* Emerald Green */
-    --success-light: #ecfdf5;
-    --danger: #ef4444;           /* Crimson Red */
+    /* Elegant SaaS Accents */
+    --primary: #2563eb;          /* Cobalt Blue */
+    --primary-light: #eff6ff;    
+    --success: #0d9488;          /* Ocean Teal */
+    --success-light: #f0fdfa;
+    --danger: #dc2626;           /* Crimson */
     --danger-light: #fef2f2;
-    --warning: #f59e0b;          /* Amber Yellow */
+    --warning: #d97706;          /* Deep Gold */
     --warning-light: #fef3c7;
-    --accent: #6366f1;           /* Indigo */
+    --accent: #4f46e5;           /* Royal Indigo */
 
-    /* Typography */
     --font-sans: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
@@ -39,7 +39,7 @@
   
   .mono { font-family: var(--font-mono); }
 
-  /* App Structure */
+  /* App Layout Structure */
   .app {
     display: grid;
     grid-template-columns: 360px 1fr 340px;
@@ -76,15 +76,8 @@
     align-items: center;
     gap: 8px;
   }
-  .topbar h1 .tag {
-    color: var(--primary);
-  }
-  .topbar .sub {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-weight: 400;
-    margin-left: 6px;
-  }
+  .topbar h1 .tag { color: var(--primary); }
+  .topbar .sub { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
 
   .clock {
     font-family: var(--font-mono);
@@ -97,7 +90,7 @@
   }
   .clock b { color: var(--text-primary); font-weight: 600; }
 
-  /* Tabs Styling */
+  /* Tab Navigation Controls */
   .mode-tabs {
     display: flex;
     gap: 4px;
@@ -122,11 +115,11 @@
   .mode-tab.active {
     background: var(--bg-card);
     color: var(--primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     font-weight: 600;
   }
 
-  /* Live Dot */
+  /* Status Indicator */
   .live-pill {
     display: flex;
     align-items: center;
@@ -143,9 +136,9 @@
   .live-dot.on { background: var(--success); animation: softPulse 1.6s infinite; }
 
   @keyframes softPulse {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(13, 148, 136, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
   }
 
   .cap-field { display: flex; align-items: center; gap: 8px; }
@@ -164,7 +157,7 @@
   }
   .cap-field input:focus { border-color: var(--primary); }
 
-  /* Grid Sidebars */
+  /* Sidebars */
   .sidebar, .rightbar {
     overflow-y: auto;
     padding: 24px;
@@ -176,7 +169,7 @@
   .sidebar { border-right: 1px solid var(--border-light); }
   .rightbar { border-left: 1px solid var(--border-light); }
 
-  /* Cards Styling */
+  /* Control Panel Cards */
   .panel {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
@@ -209,7 +202,6 @@
     display: inline-block;
   }
 
-  /* Dashboard Controls Layout */
   .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
   .mode-btn {
     background: var(--bg-app);
@@ -328,10 +320,27 @@
   .sim-btn.active { border-color: var(--success); color: var(--success); background: var(--success-light); font-weight: 600; }
   .sim-btn.reset:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
 
-  /* Center Column: Map Column & Schematics */
+  /* Center Column (The 3D Map Viewport) */
   .map-col { position: relative; border-right: 1px solid var(--border-light); background: #ffffff; }
   #map { width: 100%; height: 100%; }
   
+  /* 3D Map Control Overlay Hints */
+  .map-overlay-tips {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+
   .schematic-col { display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; background: var(--bg-app); }
   .tripline-wrap { width: 100%; max-width: 800px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .tripline { position: relative; display: flex; align-items: flex-end; min-width: min-content; padding-top: 26px; }
@@ -346,7 +355,7 @@
   .stop .stop-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); text-align: center; font-weight: 500; }
   .stop .stop-sub { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
-  /* Matrix Table Styling */
+  /* Matrix Controls */
   .loc-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .loc-chip {
     display: flex;
@@ -373,7 +382,7 @@
   table.matrix td input { width: 50px; padding: 4px; text-align: center; font-size: 12px; border: 1px solid transparent; background: transparent; border-radius: 4px; }
   table.matrix td input:focus { border-color: var(--primary); background: var(--bg-card); outline: none; }
 
-  /* Real-time Diagnostics (Right column) */
+  /* Right Panel Metrics Display */
   .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat-box { background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; }
   .stat-box .stat-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px; }
@@ -386,7 +395,7 @@
   .route-list .occ { color: var(--accent); font-weight: 600; }
   .route-list .kind-tag { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-left: 6px; }
 
-  /* Active Manifest List */
+  /* Active Manifest Panel */
   .manifest-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
   .manifest-item {
     display: flex;
@@ -419,7 +428,7 @@
   }
   .cancel-btn:hover { background: var(--danger); color: #ffffff; border-color: var(--danger); }
 
-  /* Terminal & Event Feeds */
+  /* Live Terminal Event Feed */
   .feed { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: 11px; }
   .feed-item { padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--border-light); background: var(--bg-app); }
   .feed-item.ok { border-left-color: var(--success); background: var(--success-light); }
@@ -431,11 +440,10 @@
   
   .hidden { display: none !important; }
 
-  /* Map Visualizer Lines Override */
-  .flow-line { stroke-dasharray: 8 6; animation: dashflow 0.8s linear infinite; }
-  @keyframes dashflow { to { stroke-dashoffset: -14; } }
+  /* Map Marker Styling Custom classes */
+  .mapbox-div-icon { background: transparent; border: none; }
 
-  /* Toasts Notification Stack */
+  /* Toast Notification Stack */
   #toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .toast {
     font-family: var(--font-sans);
@@ -447,7 +455,7 @@
     border-left: 4px solid var(--success);
     padding: 12px 18px;
     border-radius: 8px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
     animation: toastIn 0.2s ease-out;
     max-width: 320px;
   }
@@ -464,7 +472,7 @@
 
   <!-- TOP BRANDING & SETTINGS NAV -->
   <div class="topbar">
-    <h1>Route <span class="tag">Dispatch</span> <span class="sub">— Live Console</span></h1>
+    <h1>Route <span class="tag">Dispatch</span> <span class="sub">— Live 3D Console</span></h1>
     <div class="mode-tabs">
       <button class="mode-tab active" id="tab-geo">🗺️ Map / Coordinates</button>
       <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
@@ -483,7 +491,7 @@
     <div id="geo-panels">
       <div class="panel">
         <h2>Anchors</h2>
-        <div class="hint">Place Source / Destination on the map or type exact coordinates below.</div>
+        <div class="hint">Click to arm triggers. Click map to lock. Or, input direct coordinates.</div>
         <div class="mode-grid">
           <button class="mode-btn source" id="mode-source">📍 Set Source</button>
           <button class="mode-btn destination" id="mode-destination">🏁 Set Destination</button>
@@ -582,7 +590,12 @@
   </div>
 
   <!-- CENTER MAP & MATRIX SCHEMATICS -->
-  <div class="map-col" id="map-col"><div id="map"></div></div>
+  <div class="map-col" id="map-col">
+    <div id="map"></div>
+    <div class="map-overlay-tips">
+      🖱️ <b>3D Navigation:</b> Hold <b>Right Click / Ctrl + Drag</b> to rotate pitch & tilt the map camera.
+    </div>
+  </div>
   <div class="schematic-col hidden" id="schematic-col">
     <div class="tripline-wrap"><div class="tripline" id="tripline"></div></div>
   </div>
@@ -619,12 +632,10 @@
 
 <script>
 /* =========================================================
-   ALGORITHM CORE (mode-agnostic) — insertion heuristic +
-   full constraint re-validation on every candidate.
-   `distFn` is swapped depending on input mode (geo vs matrix).
+   ALGORITHM CORE (mode-agnostic)
    ========================================================= */
 
-const EPSILON = 1e-6; // guards against floating-point rounding at exact-boundary flex checks
+const EPSILON = 1e-6;
 
 function haversineKm(a, b){
   const R = 6371;
@@ -637,7 +648,7 @@ function haversineKm(a, b){
 const ROAD_FACTOR = 1.3;
 function geoDistFn(a, b){ return a.id === b.id ? 0 : haversineKm(a,b) * ROAD_FACTOR; }
 
-let matrixDist = {}; // "idA|idB" -> km
+let matrixDist = {}; 
 function mKey(a,b){ return a+'|'+b; }
 function matrixDistFn(a, b){
   if(a.id === b.id) return 0;
@@ -661,10 +672,6 @@ function validateDynamicConstraints(route, manifest, capacity){
   const locationIndices = {};
   for(let idx=0; idx<route.length; idx++) locationIndices[route[idx].id] = idx;
 
-  // OPTIMIZED: precompute each location id's net passenger delta once, in
-  // O(R), instead of re-scanning the whole manifest at every route node
-  // (which was O(M*R)). The single pass below then applies the precomputed
-  // delta at each stop, making this step O(M+R) overall.
   const delta = {};
   for(const req of Object.values(manifest)){
     delta[req.pickup.id] = (delta[req.pickup.id] || 0) + 1;
@@ -689,10 +696,6 @@ function validateDynamicConstraints(route, manifest, capacity){
     const actualTravelDist = cumulativeDist[dPos] - cumulativeDist[pPos];
     const maxAllowedDist = req.dist + req.flex;
 
-    // FIX: epsilon tolerance -- without it, floating-point rounding from summing
-    // cumulative distances can make an exact-boundary case (very commonly flex=0)
-    // register as a violation (or, depending on rounding direction, silently pass
-    // a case that should fail) purely due to ~1e-13 noise, not a real detour.
     if(actualTravelDist > maxAllowedDist + EPSILON) return {valid:false, cost:Infinity, passengerCounts:[], reason:'flexibility'};
   }
 
@@ -738,11 +741,11 @@ function insertRequestLive(route, manifest, newRequest, capacity){
 }
 
 /* =========================================================
-   APP STATE
+   APP STATE & 3D MAP CONFIG
    ========================================================= */
 
-const DEFAULT_CENTER = [27.5530, 76.6346];
-let MODE = 'geo'; // 'geo' | 'matrix'
+const DEFAULT_CENTER = [76.6346, 27.5530]; // Note: MapLibre uses [lng, lat] coordinate sorting
+let MODE = 'geo'; 
 
 let capacity = 3;
 let source = null, destination = null;
@@ -756,10 +759,11 @@ let armedMode = null;
 let pendingPickup = null, pendingDrop = null;
 let simRunning = false, simTimer = null;
 
-let map, routeLine, markers = {};
+let map;
+let markers = {};
 
-// Matrix-mode specific state
-let mxLocations = []; // array of {id}
+// Matrix State
+let mxLocations = [];
 let mxSource = {id:'S', kind:'source', label:'S'};
 let mxDestination = {id:'E', kind:'destination', label:'E'};
 
@@ -805,7 +809,6 @@ function switchMode(mode){
   document.getElementById('map-col').classList.toggle('hidden', mode!=='geo');
   document.getElementById('schematic-col').classList.toggle('hidden', mode!=='matrix');
 
-  // Reset dispatch state when switching modes (distance semantics differ completely)
   route = []; manifest = {}; acceptedList = []; rejectedList = []; cancelledList = [];
   document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
 
@@ -813,7 +816,7 @@ function switchMode(mode){
     if(!source) source = {id:'SOURCE', kind:'source', label:'S', lat:27.5530, lng:76.6346};
     if(!destination) destination = {id:'DEST', kind:'destination', label:'E', lat:27.5730, lng:76.6580};
     route = [source, destination];
-    setTimeout(()=>{ map.invalidateSize(); renderAll(); }, 50);
+    setTimeout(()=>{ map.resize(); renderAll(); }, 50);
   } else {
     route = [mxSource, mxDestination];
     renderMatrixLocations();
@@ -824,57 +827,92 @@ function switchMode(mode){
 }
 
 /* =========================================================
-   MAP SETUP (geo mode)
+   3D REAL-WORLD MAP SETUP (MapLibre GL JS integration)
    ========================================================= */
 
-const GridBackdrop = L.GridLayer.extend({
-  createTile: function(coords){
-    const tile = document.createElement('canvas');
-    const size = this.getTileSize();
-    tile.width = size.x; tile.height = size.y;
-    const ctx = tile.getContext('2d');
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,size.x,size.y);
-    const minor=32, major=128;
-    for(let x=0;x<=size.x;x+=minor){
-      ctx.strokeStyle = (x%major===0) ? '#cbd5e1' : '#f1f5f9';
-      ctx.lineWidth = (x%major===0)? 1.2 : 1;
-      ctx.beginPath(); ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,size.y); ctx.stroke();
-    }
-    for(let y=0;y<=size.y;y+=minor){
-      ctx.strokeStyle = (y%major===0) ? '#cbd5e1' : '#f1f5f9';
-      ctx.lineWidth = (y%major===0)? 1.2 : 1;
-      ctx.beginPath(); ctx.moveTo(0,y+0.5); ctx.lineTo(size.x,y+0.5); ctx.stroke();
-    }
-    return tile;
-  }
-});
-
 function initMap(){
-  map = L.map('map', {zoomControl:true}).setView(DEFAULT_CENTER, 13);
-  new GridBackdrop({tileSize:256, minZoom:2, maxZoom:19}).addTo(map);
-  map.attributionControl.setPrefix('offline coordinate grid — not real street imagery');
-  routeLine = L.polyline([], {color:'#2563eb', weight:4, opacity:0.85}).addTo(map);
+  // Using OpenFreeMap's public server style. 
+  // Renders beautiful, clean 3D structures out of the box with zero keys needed!
+  map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    center: DEFAULT_CENTER,
+    zoom: 13,
+    pitch: 50,       // Tilts the camera for realistic 3D perspective
+    bearing: -10,    // Rotates the map view
+    antialias: true
+  });
+
+  map.on('load', () => {
+    // Add 3D building extrusions layer
+    map.addLayer({
+      'id': '3d-buildings',
+      'source': 'openmaptiles',
+      'source-layer': 'building',
+      'type': 'fill-extrusion',
+      'minzoom': 13,
+      'paint': {
+        'fill-extrusion-color': '#cbd5e1', // Matches our Slate palette
+        'fill-extrusion-height': [
+          'interpolate', ['linear'], ['zoom'],
+          13, 0,
+          13.05, ['get', 'render_height']
+        ],
+        'fill-extrusion-base': [
+          'interpolate', ['linear'], ['zoom'],
+          13, 0,
+          13.05, ['get', 'render_min_height']
+        ],
+        'fill-extrusion-opacity': 0.65
+      }
+    });
+
+    // Initialize Route Layer
+    map.addSource('route-source', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: [] }
+      }
+    });
+
+    map.addLayer({
+      id: 'route-layer',
+      type: 'line',
+      source: 'route-source',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#2563eb', // Cobalt Blue
+        'line-width': 5,
+        'line-opacity': 0.8
+      }
+    });
+
+    renderAll();
+  });
+
   map.on('click', onMapClick);
 }
 
-function iconFor(kind){
+function createDOMMarker(kind) {
   const palette = {
-    source:{bg:'#f59e0b', border:'#f59e0b', text:'#ffffff', size:30, label:'S'},
-    destination:{bg:'#1e293b', border:'#1e293b', text:'#ffffff', size:30, label:'E'},
-    pickup:{bg:'#10b981', border:'#10b981', text:'#ffffff', size:24, label:'P'},
-    drop:{bg:'#3b82f6', border:'#3b82f6', text:'#ffffff', size:24, label:'D'},
-    pending:{bg:'transparent', border:'#94a3b8', text:'#94a3b8', size:22, label:'?'}
+    source: { bg: '#d97706', border: '#d97706', text: '#ffffff', size: 30, label: 'S' },
+    destination: { bg: '#1e293b', border: '#1e293b', text: '#ffffff', size: 30, label: 'E' },
+    pickup: { bg: '#0d9488', border: '#0d9488', text: '#ffffff', size: 24, label: 'P' },
+    drop: { bg: '#2563eb', border: '#2563eb', text: '#ffffff', size: 24, label: 'D' },
+    pending: { bg: 'transparent', border: '#94a3b8', text: '#94a3b8', size: 22, label: '?' }
   };
   const p = palette[kind];
-  return L.divIcon({
-    html:`<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-size:${p.size>26?12:10}px;font-weight:700;color:${p.text};box-shadow:0 3px 8px rgba(0,0,0,0.12), 0 0 0 2px rgba(255,255,255,1);">${p.label}</div>`,
-    className:'', iconSize:[p.size,p.size], iconAnchor:[p.size/2,p.size/2]
-  });
+  const el = document.createElement('div');
+  el.className = 'mapbox-div-icon';
+  el.innerHTML = `<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-size:${p.size>26?12:10}px;font-weight:700;color:${p.text};box-shadow:0 4px 10px rgba(0,0,0,0.15), 0 0 0 2px rgba(255,255,255,1);">${p.label}</div>`;
+  return el;
 }
 
 function onMapClick(e){
   if(MODE !== 'geo' || !armedMode) return;
-  const latlng = {lat:e.latlng.lat, lng:e.latlng.lng};
+  const latlng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
   applyPlacement(armedMode, latlng);
   disarm();
 }
@@ -895,25 +933,25 @@ document.getElementById('mode-destination').addEventListener('click', e=>arm('de
 document.getElementById('mode-pickup').addEventListener('click', e=>arm('pickup', e.currentTarget));
 document.getElementById('mode-drop').addEventListener('click', e=>arm('drop', e.currentTarget));
 
-/* ---- Coordinate-entry (typed lat/lng instead of a map click) ---- */
+/* ---- Coordinate Input ---- */
 document.getElementById('src-set-coord').addEventListener('click', ()=>{
   const lat=parseFloat(document.getElementById('src-lat').value), lng=parseFloat(document.getElementById('src-lng').value);
-  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid source lat/lng.');
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid coordinates.');
   applyPlacement('source', {lat,lng});
 });
 document.getElementById('dst-set-coord').addEventListener('click', ()=>{
   const lat=parseFloat(document.getElementById('dst-lat').value), lng=parseFloat(document.getElementById('dst-lng').value);
-  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid destination lat/lng.');
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid coordinates.');
   applyPlacement('destination', {lat,lng});
 });
 document.getElementById('pu-set-coord').addEventListener('click', ()=>{
   const lat=parseFloat(document.getElementById('pu-lat').value), lng=parseFloat(document.getElementById('pu-lng').value);
-  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid pickup lat/lng.');
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid coordinates.');
   applyPlacement('pickup', {lat,lng});
 });
 document.getElementById('dr-set-coord').addEventListener('click', ()=>{
   const lat=parseFloat(document.getElementById('dr-lat').value), lng=parseFloat(document.getElementById('dr-lng').value);
-  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid dropoff lat/lng.');
+  if(isNaN(lat)||isNaN(lng)) return alert('Enter valid coordinates.');
   applyPlacement('drop', {lat,lng});
 });
 
@@ -971,7 +1009,7 @@ document.getElementById('add-loc-btn').addEventListener('click', ()=>{
   const id = idInput.value.trim();
   if(!id) return;
   if(mxLocations.find(l=>l.id===id) || id===mxSource.id || id===mxDestination.id){
-    alert('That location ID already exists.'); return;
+    alert('That ID already exists.'); return;
   }
   mxLocations.push({id});
   idInput.value = '';
@@ -982,7 +1020,6 @@ document.getElementById('add-loc-btn').addEventListener('click', ()=>{
 
 function removeMxLocation(id){
   mxLocations = mxLocations.filter(l=>l.id!==id);
-  // purge matrix entries referencing this id
   Object.keys(matrixDist).forEach(k=>{ if(k.startsWith(id+'|') || k.endsWith('|'+id)) delete matrixDist[k]; });
   renderMatrixLocations();
   renderMatrixTable();
@@ -1061,7 +1098,7 @@ document.getElementById('mx-drop').addEventListener('change', renderMatrixReques
 document.getElementById('mx-submit-req').addEventListener('click', ()=>{
   const pId = document.getElementById('mx-pickup').value;
   const dId = document.getElementById('mx-drop').value;
-  if(!pId || !dId || pId===dId) return alert('Choose two different locations for pickup and dropoff.');
+  if(!pId || !dId || pId===dId) return alert('Choose two different locations.');
   const flex = parseFloat(document.getElementById('mx-req-flex').value) || 0;
   const dist = getMatrixDist(pId, dId);
   const req = {
@@ -1080,7 +1117,7 @@ document.getElementById('mx-reset-btn').addEventListener('click', ()=>{
 });
 
 /* =========================================================
-   PROCESS A REQUEST (shared by both modes)
+   PROCESS REQUESTS
    ========================================================= */
 
 function processRequest(req){
@@ -1097,8 +1134,6 @@ function processRequest(req){
   renderAll();
 }
 
-/* Cancel an already-accepted request: drop it from the manifest and remove
-   its pickup/drop stops from the route, preserving every other stop's order. */
 function cancelRequest(reqId){
   const req = manifest[reqId];
   if(!req) return;
@@ -1145,32 +1180,38 @@ function logEvent(result, req){
 }
 
 /* =========================================================
-   RENDER
+   3D RENDERING PIPELINE
    ========================================================= */
 
 function renderMarkers(){
-  if(MODE !== 'geo') return;
-  Object.values(markers).forEach(m=>map.removeLayer(m));
+  if(MODE !== 'geo' || !map || !map.isStyleLoaded()) return;
+
+  // Clear older markers
+  Object.values(markers).forEach(m => m.remove());
   markers = {};
-  const place = (node, kind, tooltip)=>{
-    const marker = L.marker([node.lat, node.lng], {icon: iconFor(kind)}).addTo(map);
-    if(tooltip) marker.bindTooltip(tooltip, {permanent:false});
+
+  const place = (node, kind) => {
+    const el = createDOMMarker(kind);
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([node.lng, node.lat])
+      .addTo(map);
     markers[node.id] = marker;
   };
-  if(source) place(source, 'source', 'Source');
-  if(destination) place(destination, 'destination', 'Destination');
-  route.forEach(node=>{
-    if(node.kind === 'pickup') place(node, 'pickup', 'Pickup');
-    if(node.kind === 'drop') place(node, 'drop', 'Dropoff');
+
+  if(source) place(source, 'source');
+  if(destination) place(destination, 'destination');
+  route.forEach(node => {
+    if(node.kind === 'pickup') place(node, 'pickup');
+    if(node.kind === 'drop') place(node, 'drop');
   });
-  if(pendingPickup) place(pendingPickup, 'pending', 'Pending pickup');
-  if(pendingDrop) place(pendingDrop, 'pending', 'Pending dropoff');
+  if(pendingPickup) place(pendingPickup, 'pending');
+  if(pendingDrop) place(pendingDrop, 'pending');
 }
 
 function renderTripline(check){
   const tripline = document.getElementById('tripline');
   tripline.innerHTML = '';
-  if(route.length < 2){ return; }
+  if(route.length < 2) return;
   const maxOcc = Math.max(1, ...check.passengerCounts);
   route.forEach((node,i)=>{
     const isTerminal = i===0 || i===route.length-1;
@@ -1214,13 +1255,25 @@ function renderRouteAndStats(){
     });
   }
 
-  if(MODE === 'geo'){
+  if(MODE === 'geo' && map && map.isStyleLoaded()){
     if(route.length > 1){
-      routeLine.setLatLngs(route.map(n=>[n.lat,n.lng]));
-      map.fitBounds(routeLine.getBounds().pad(0.25));
-      const el = routeLine.getElement && routeLine.getElement();
-      if(el) el.classList.add('flow-line');
-    } else { routeLine.setLatLngs([]); }
+      const coords = route.map(n => [n.lng, n.lat]);
+      map.getSource('route-source').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: coords }
+      });
+
+      // Fly and frame path seamlessly in 3D
+      const bounds = coords.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]));
+      map.fitBounds(bounds, { padding: 80, duration: 1200, pitch: 45 });
+    } else {
+      map.getSource('route-source').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: [] }
+      });
+    }
   } else {
     renderTripline(check);
   }
@@ -1244,7 +1297,7 @@ function renderManifestList(){
         <span class="mi-label">${req.id}</span> &nbsp;${pLabel} → ${dLabel}
         <div class="mi-sub">${req.dist.toFixed(1)}km base · Δ${req.flex}</div>
       </span>
-      <button class="cancel-btn" data-id="${req.id}" title="Cancel this request">×</button>
+      <button class="cancel-btn" data-id="${req.id}" title="Cancel request">×</button>
     `;
     li.querySelector('.cancel-btn').addEventListener('click', e=>cancelRequest(e.currentTarget.dataset.id));
     list.appendChild(li);
@@ -1259,12 +1312,12 @@ function renderAll(){ renderMarkers(); renderRouteAndStats(); renderManifestList
 document.getElementById('capacity').addEventListener('change', e=>{ capacity = parseFloat(e.target.value) || 1; });
 
 /* =========================================================
-   LIVE SIMULATION (geo mode only)
+   SIMULATION
    ========================================================= */
 function randomNearby(center, radiusKm){
   const r = radiusKm / 111;
   const angle = Math.random()*Math.PI*2, rad = Math.random()*r;
-  return {lat: center.lat + rad*Math.cos(angle), lng: center.lng + rad*Math.sin(angle)};
+  return {lat: center.lat + rad*Math.sin(angle), lng: center.lng + rad*Math.sin(angle)};
 }
 function spawnRandomRequest(){
   if(!source || !destination) return;
@@ -1278,7 +1331,7 @@ document.getElementById('sim-toggle').addEventListener('click', (e)=>{
   simRunning = !simRunning;
   const btn=e.target, dot=document.getElementById('live-dot'), text=document.getElementById('live-text');
   if(simRunning){
-    if(!source || !destination){ alert('Set a Source and Destination first.'); simRunning=false; return; }
+    if(!source || !destination){ alert('Set Source and Destination anchors first.'); simRunning=false; return; }
     btn.textContent='⏸ Stop'; btn.classList.add('active'); dot.classList.add('on'); text.textContent='live';
     simTimer = setInterval(spawnRandomRequest, 2200);
   } else {
@@ -1299,13 +1352,12 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
 });
 
 /* =========================================================
-   INIT
+   BOOTSTRAP
    ========================================================= */
 initMap();
 source = {id:'SOURCE', kind:'source', label:'S', lat:27.5530, lng:76.6346};
 destination = {id:'DEST', kind:'destination', label:'E', lat:27.5730, lng:76.6580};
 route = [source, destination];
-renderAll();
 </script>
 </body>
 </html>
