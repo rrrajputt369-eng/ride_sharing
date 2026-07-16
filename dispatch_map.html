@@ -9,52 +9,81 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
   :root{
-    --ink:#1E2530; --panel:#262E3B; --panel-raised:#2C3542; --hairline:#3A4356;
-    --chalk:#EDEFF2; --dim:#8D97A8; --amber:#E8A33D; --teal:#4FA9A2;
-    --teal-dim:#1E3B39; --rose:#D6635A; --rose-dim:#402625;
+    --ink:#141822; --ink2:#1A1F2B;
+    --panel: rgba(36,44,58,0.72); --panel-solid:#242C3A; --panel-raised:#2E3849;
+    --hairline: rgba(255,255,255,0.08); --hairline-strong: rgba(255,255,255,0.14);
+    --chalk:#F4F5F7; --dim:#8D97AC;
+    --amber:#FFA53E; --amber-glow: rgba(255,165,62,0.35);
+    --teal:#3FD4B8; --teal-dim: rgba(63,212,184,0.14);
+    --rose:#FF6B6B; --rose-dim: rgba(255,107,107,0.14);
+    --violet:#8B7CF6;
+    --grad-hero: linear-gradient(135deg, #1B2030 0%, #232A3D 55%, #1B2030 100%);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
-  body{ background:var(--ink); color:var(--chalk); font-family:'Space Grotesk',sans-serif; -webkit-font-smoothing:antialiased; }
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(255,165,62,0.08), transparent 60%),
+      radial-gradient(1000px 700px at 100% 10%, rgba(63,212,184,0.07), transparent 55%),
+      var(--ink);
+    color:var(--chalk); font-family:'Space Grotesk',sans-serif; -webkit-font-smoothing:antialiased;
+  }
   .mono{font-family:'IBM Plex Mono',monospace;}
+
+  @keyframes fadeSlideIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes popIn{ 0%{ transform:scale(0.4); opacity:0; } 70%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); } }
+  @keyframes softPulse{ 0%{ box-shadow:0 0 0 0 rgba(63,212,184,.55); } 70%{ box-shadow:0 0 0 10px rgba(63,212,184,0); } 100%{ box-shadow:0 0 0 0 rgba(63,212,184,0); } }
+  @keyframes shimmer{ 0%{ background-position:0% 50%; } 100%{ background-position:200% 50%; } }
+  @keyframes toastIn{ from{ opacity:0; transform:translateX(24px) scale(0.97); } to{ opacity:1; transform:translateX(0) scale(1); } }
+  @keyframes toastOut{ from{ opacity:1; transform:translateX(0); } to{ opacity:0; transform:translateX(24px); } }
 
   .app{ display:grid; grid-template-columns:360px 1fr 320px; grid-template-rows:60px 1fr; height:100vh; }
   @media (max-width:1050px){ .app{ grid-template-columns:1fr; grid-template-rows:auto auto 420px auto; height:auto; } }
 
   .topbar{
     grid-column:1/4; display:flex; align-items:center; justify-content:space-between;
-    padding:0 20px; border-bottom:2px solid var(--hairline); background:var(--panel); flex-wrap:wrap; gap:10px;
+    padding:0 22px; border-bottom:1px solid var(--hairline-strong); background:var(--grad-hero); flex-wrap:wrap; gap:10px;
+    box-shadow:0 2px 20px rgba(0,0,0,0.25);
   }
   @media (max-width:1050px){ .topbar{grid-column:1;} }
-  .topbar h1{ font-size:15px; letter-spacing:0.04em; text-transform:uppercase; margin:0; font-weight:700; }
-  .topbar h1 .tag{ color:var(--amber); }
+  .topbar h1{ font-size:16px; letter-spacing:0.03em; text-transform:uppercase; margin:0; font-weight:700; }
+  .topbar h1 .tag{ background:linear-gradient(90deg,var(--amber),#FFC978); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .topbar .sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0; }
+  .clock{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--dim); letter-spacing:0.04em; min-width:78px; }
+  .clock b{ color:var(--chalk); font-weight:600; }
 
-  .mode-tabs{ display:flex; gap:4px; background:var(--panel-raised); border:1px solid var(--hairline); border-radius:4px; padding:3px; }
+  .mode-tabs{ display:flex; gap:4px; background:rgba(0,0,0,0.25); border:1px solid var(--hairline-strong); border-radius:8px; padding:3px; backdrop-filter:blur(6px); }
   .mode-tab{
     background:none; border:none; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px;
-    padding:7px 12px; border-radius:3px; cursor:pointer;
+    padding:8px 14px; border-radius:6px; cursor:pointer; transition:all .18s ease;
   }
-  .mode-tab.active{ background:var(--amber); color:#211705; font-weight:600; }
+  .mode-tab:hover{ color:var(--chalk); }
+  .mode-tab.active{ background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; font-weight:700; box-shadow:0 2px 10px var(--amber-glow); }
 
-  .live-pill{ display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); }
+  .live-pill{ display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim);
+    background:rgba(0,0,0,0.2); padding:6px 12px; border-radius:20px; border:1px solid var(--hairline-strong); }
   .live-dot{ width:8px;height:8px;border-radius:50%; background:var(--dim); }
-  .live-dot.on{ background:var(--teal); animation:pulse 1.6s infinite; }
-  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(79,169,162,.55);} 70%{box-shadow:0 0 0 8px rgba(79,169,162,0);} 100%{box-shadow:0 0 0 0 rgba(79,169,162,0);} }
+  .live-dot.on{ background:var(--teal); animation:softPulse 1.6s infinite; }
   .cap-field{ display:flex; align-items:center; gap:8px; }
   .cap-field label{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); }
   .cap-field input{ width:52px; background:var(--ink); border:1px solid var(--hairline); color:var(--chalk); font-family:'IBM Plex Mono',monospace; font-size:13px; padding:5px 6px; border-radius:3px; }
 
-  .sidebar{ overflow-y:auto; border-right:1px solid var(--hairline); padding:16px; background:var(--ink); }
-  .panel{ background:var(--panel); border:1px solid var(--hairline); border-radius:4px; padding:14px 16px; margin-bottom:14px; }
-  .panel h2{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em; color:var(--dim); margin:0 0 12px 0; display:flex; align-items:center; gap:8px; }
-  .panel h2::before{ content:''; width:6px;height:6px;background:var(--amber);border-radius:1px;display:inline-block; }
+  .sidebar{ overflow-y:auto; border-right:1px solid var(--hairline); padding:18px; background:var(--ink2); }
+  .panel{
+    background:var(--panel); backdrop-filter:blur(10px); border:1px solid var(--hairline);
+    border-radius:10px; padding:16px 18px; margin-bottom:16px; box-shadow:0 4px 18px rgba(0,0,0,0.18);
+    transition:border-color .2s ease;
+  }
+  .panel:hover{ border-color:var(--hairline-strong); }
+  .panel h2{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--dim); margin:0 0 13px 0; display:flex; align-items:center; gap:8px; }
+  .panel h2::before{ content:''; width:7px;height:7px;background:linear-gradient(135deg,var(--amber),#FF8A3D);border-radius:2px;display:inline-block; box-shadow:0 0 8px var(--amber-glow); }
 
   .mode-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
-  .mode-btn{ background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:9px 6px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; text-align:center; }
-  .mode-btn.armed{ background:var(--teal-dim); border-color:var(--teal); color:var(--teal); }
-  .mode-btn.source.armed, .mode-btn.destination.armed{ background:#4A3B23; border-color:var(--amber); color:var(--amber); }
-  .hint{ font-size:11px; color:var(--dim); font-family:'IBM Plex Mono',monospace; line-height:1.5; margin-bottom:10px;}
+  .mode-btn{ background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px 6px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; text-align:center; transition:all .15s ease; }
+  .mode-btn:hover{ border-color:var(--hairline-strong); transform:translateY(-1px); }
+  .mode-btn.armed{ background:var(--teal-dim); border-color:var(--teal); color:var(--teal); box-shadow:0 0 12px rgba(63,212,184,0.25); }
+  .mode-btn.source.armed, .mode-btn.destination.armed{ background:rgba(255,165,62,0.14); border-color:var(--amber); color:var(--amber); box-shadow:0 0 12px var(--amber-glow); }
+  .hint{ font-size:11px; color:var(--dim); font-family:'IBM Plex Mono',monospace; line-height:1.55; margin-bottom:10px;}
 
   .subtabs{ display:flex; gap:6px; margin-bottom:10px; }
   .subtab{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--dim); padding:6px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; cursor:pointer; text-align:center; }
@@ -64,43 +93,49 @@
   .coord-row input{ flex:1; min-width:0; }
   .coord-row button{ white-space:nowrap; }
 
-  .req-preview{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:3px; padding:10px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); margin-bottom:10px; }
+  .req-preview{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:11px 12px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim); margin-bottom:10px; }
   .req-preview b{ color:var(--chalk); }
   .field-row{ display:flex; gap:10px; margin-bottom:10px; }
   .field-row > div{ flex:1; }
   label.field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--dim); display:block; margin-bottom:5px; }
   input[type=text], input[type=number], select{
-    width:100%; background:var(--ink); border:1px solid var(--hairline); color:var(--chalk);
-    font-family:'IBM Plex Mono',monospace; font-size:13px; padding:8px 9px; border-radius:3px;
+    width:100%; background:rgba(0,0,0,0.22); border:1px solid var(--hairline); color:var(--chalk);
+    font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 10px; border-radius:6px; transition:border-color .15s ease;
   }
+  input[type=text]:focus, input[type=number]:focus, select:focus{ outline:none; border-color:var(--amber); box-shadow:0 0 0 3px rgba(255,165,62,0.12); }
   select{ appearance:none; }
   .small-btn{
     background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk);
-    padding:8px 10px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer;
+    padding:9px 11px; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease;
   }
-  .small-btn:hover{ border-color:var(--teal); color:var(--teal); }
+  .small-btn:hover{ border-color:var(--teal); color:var(--teal); transform:translateY(-1px); }
   .submit-btn{
-    width:100%; background:var(--amber); color:#211705; border:none; padding:11px;
+    width:100%; background:linear-gradient(135deg,var(--amber),#FF8A3D); color:#241505; border:none; padding:12px;
     font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.04em;
-    text-transform:uppercase; border-radius:4px; cursor:pointer;
+    text-transform:uppercase; border-radius:8px; cursor:pointer; box-shadow:0 4px 16px var(--amber-glow); transition:all .15s ease;
   }
-  .submit-btn:disabled{ opacity:0.35; cursor:not-allowed; }
-  .submit-btn:hover:not(:disabled){ filter:brightness(1.08); }
+  .submit-btn:disabled{ opacity:0.3; cursor:not-allowed; box-shadow:none; }
+  .submit-btn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 6px 22px var(--amber-glow); }
+  .submit-btn:active:not(:disabled){ transform:translateY(0); }
 
   .sim-row{ display:flex; gap:8px; }
-  .sim-btn{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:9px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; }
-  .sim-btn.active{ border-color:var(--teal); color:var(--teal); }
+  .sim-btn{ flex:1; background:var(--panel-raised); border:1px solid var(--hairline); color:var(--chalk); padding:10px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; cursor:pointer; transition:all .15s ease; }
+  .sim-btn:hover{ transform:translateY(-1px); }
+  .sim-btn.active{ border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
   .sim-btn.reset:hover{ border-color:var(--rose); color:var(--rose); }
 
   .map-col{ position:relative; }
   #map{ width:100%; height:100%; }
   .leaflet-div-icon{ background:transparent; border:none; }
+  .flow-line{ stroke-dasharray:10 7; animation:dashflow 0.9s linear infinite; }
+  @keyframes dashflow{ to{ stroke-dashoffset:-17; } }
 
   /* ---- Matrix mode ---- */
   .loc-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .loc-chip{
     display:flex; align-items:center; gap:6px; background:var(--panel-raised); border:1px solid var(--hairline);
-    border-radius:12px; padding:4px 10px 4px 12px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    border-radius:14px; padding:5px 10px 5px 13px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    animation:popIn .25s ease;
   }
   .loc-chip button{ background:none; border:none; color:var(--dim); cursor:pointer; font-size:13px; line-height:1; padding:0; }
   .loc-chip button:hover{ color:var(--rose); }
@@ -112,44 +147,71 @@
   table.matrix th, table.matrix td{ padding:4px 5px; text-align:center; border:1px solid var(--hairline); }
   table.matrix th{ color:var(--amber); background:var(--panel-raised); font-weight:600; min-width:40px; }
   table.matrix td.diag{ color:var(--dim); background:var(--panel-raised); }
-  table.matrix td input{ width:46px; padding:4px 3px; text-align:center; font-size:11.5px; border:none; background:transparent; }
-  table.matrix td input:focus{ background:var(--ink); border-radius:2px; }
+  table.matrix td input{ width:46px; padding:4px 3px; text-align:center; font-size:11.5px; border:none; background:transparent; border-radius:4px; }
+  table.matrix td input:focus{ background:rgba(255,165,62,0.1); box-shadow:none; }
 
   .schematic-col{ display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; }
   .tripline-wrap{ width:100%; overflow-x:auto; padding:10px 4px; }
   .tripline{ position:relative; display:flex; align-items:flex-end; min-width:min-content; padding-top:26px; }
-  .stop{ position:relative; display:flex; flex-direction:column; align-items:center; min-width:82px; flex:1; }
-  .stop .rail{ position:absolute; top:14px; left:50%; width:100%; height:2px; background:var(--amber); z-index:0; }
+  .stop{ position:relative; display:flex; flex-direction:column; align-items:center; min-width:82px; flex:1; animation:popIn .3s ease; }
+  .stop .rail{ position:absolute; top:14px; left:50%; width:100%; height:2px; background:linear-gradient(90deg,var(--amber),#FFC978); z-index:0; }
   .stop:first-child .rail{ left:50%; width:50%; }
   .stop:last-child .rail{ width:50%; }
-  .stop .node{ width:13px;height:13px; border-radius:50%; background:var(--panel-raised); border:2px solid var(--amber); z-index:1; margin-bottom:8px; }
-  .stop.terminal .node{ background:var(--amber); width:15px;height:15px; }
-  .stop .occ-bar{ width:24px; background:var(--teal); border-radius:2px 2px 0 0; margin-bottom:6px; }
+  .stop .node{ width:13px;height:13px; border-radius:50%; background:var(--panel-raised); border:2px solid var(--amber); z-index:1; margin-bottom:8px; box-shadow:0 0 10px var(--amber-glow); }
+  .stop.terminal .node{ background:var(--amber); width:16px;height:16px; }
+  .stop .occ-bar{ width:24px; background:linear-gradient(180deg,#5CEBD1,var(--teal)); border-radius:4px 4px 0 0; margin-bottom:6px; }
   .stop .occ-num{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--teal); margin-top:-4px; margin-bottom:4px; }
   .stop .stop-label{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--chalk); text-align:center; }
   .stop .stop-sub{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
 
-  .rightbar{ overflow-y:auto; border-left:1px solid var(--hairline); padding:16px; background:var(--ink); }
+  .rightbar{ overflow-y:auto; border-left:1px solid var(--hairline); padding:18px; background:var(--ink2); }
   .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .stat-box{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:3px; padding:9px 10px; }
+  .stat-box{ background:var(--panel-raised); border:1px solid var(--hairline); border-radius:8px; padding:10px 12px; transition:transform .15s ease; }
   .stat-box .stat-label{ font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); margin-bottom:3px;}
-  .stat-box .stat-value{ font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; }
+  .stat-box .stat-value{ font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:600; transition:color .2s ease; }
   .stat-box.accent .stat-value{ color:var(--amber); }
+  .stat-box.flash{ transform:scale(1.04); }
 
   .route-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
-  .route-list li{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--hairline); }
+  .route-list li{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--hairline); animation:fadeSlideIn .25s ease; }
   .route-list li:last-child{ border-bottom:none; }
   .route-list .occ{ color:var(--teal); font-weight:600; }
   .route-list .kind-tag{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; }
 
+  .manifest-list{ list-style:none; margin:0; padding:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:6px; }
+  .manifest-item{
+    display:flex; justify-content:space-between; align-items:center; padding:8px 10px;
+    background:var(--teal-dim); border-left:3px solid var(--teal); border-radius:6px; animation:fadeSlideIn .25s ease;
+  }
+  .manifest-item .mi-label{ color:var(--chalk); }
+  .manifest-item .mi-sub{ color:var(--dim); font-size:10px; }
+  .cancel-btn{
+    background:rgba(255,107,107,0.12); border:1px solid transparent; color:var(--rose); width:24px; height:24px;
+    border-radius:50%; cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+    transition:all .15s ease;
+  }
+  .cancel-btn:hover{ background:var(--rose); color:#fff; transform:scale(1.08); }
+
   .feed{ display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:10.8px; }
-  .feed-item{ padding:7px 9px; border-radius:3px; border-left:3px solid var(--hairline); background:var(--panel-raised); }
+  .feed-item{ padding:8px 10px; border-radius:7px; border-left:3px solid var(--hairline); background:var(--panel-raised); animation:fadeSlideIn .3s ease; }
   .feed-item.ok{ border-left-color:var(--teal); }
   .feed-item.no{ border-left-color:var(--rose); }
+  .feed-item.cancel{ border-left-color:var(--violet); }
   .feed-item .ts{ color:var(--dim); margin-right:6px; }
   .feed-item .reason{ color:var(--rose); }
   .empty-note{ color:var(--dim); font-size:11.5px; font-family:'IBM Plex Mono',monospace; }
   .hidden{ display:none !important; }
+
+  /* ---- Toasts ---- */
+  #toast-stack{ position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+  .toast{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--chalk); background:var(--panel-solid);
+    border:1px solid var(--hairline-strong); border-left:4px solid var(--teal); padding:11px 16px; border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35); animation:toastIn .25s ease; max-width:320px;
+  }
+  .toast.no{ border-left-color:var(--rose); }
+  .toast.cancel{ border-left-color:var(--violet); }
+  .toast.leaving{ animation:toastOut .25s ease forwards; }
 </style>
 </head>
 <body>
@@ -162,6 +224,7 @@
       <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
     </div>
     <div style="display:flex; align-items:center; gap:18px;">
+      <div class="clock" id="clock">--:--:--</div>
       <div class="cap-field"><label>Capacity</label><input type="number" id="capacity" value="3" min="1"></div>
       <div class="live-pill"><span class="live-dot" id="live-dot"></span><span id="live-text">idle</span></div>
     </div>
@@ -287,7 +350,12 @@
         <div class="stat-box"><div class="stat-label">Last Op</div><div class="stat-value" id="stat-time">— ms</div></div>
         <div class="stat-box"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">0</div></div>
         <div class="stat-box"><div class="stat-label">Rejected</div><div class="stat-value" id="stat-rejected">0</div></div>
+        <div class="stat-box" style="grid-column:1/3;"><div class="stat-label">Cancelled</div><div class="stat-value" id="stat-cancelled">0</div></div>
       </div>
+    </div>
+    <div class="panel">
+      <h2>Active Manifest</h2>
+      <ul class="manifest-list" id="manifest-list"><li class="empty-note">no requests on board yet</li></ul>
     </div>
     <div class="panel">
       <h2>Route &amp; Passenger Count</h2>
@@ -300,6 +368,8 @@
   </div>
 
 </div>
+
+<div id="toast-stack"></div>
 
 <script>
 /* =========================================================
@@ -345,12 +415,19 @@ function validateDynamicConstraints(route, manifest, capacity){
   const locationIndices = {};
   for(let idx=0; idx<route.length; idx++) locationIndices[route[idx].id] = idx;
 
+  // OPTIMIZED: precompute each location id's net passenger delta once, in
+  // O(R), instead of re-scanning the whole manifest at every route node
+  // (which was O(M*R)). The single pass below then applies the precomputed
+  // delta at each stop, making this step O(M+R) overall.
+  const delta = {};
+  for(const req of Object.values(manifest)){
+    delta[req.pickup.id] = (delta[req.pickup.id] || 0) + 1;
+    delta[req.drop.id] = (delta[req.drop.id] || 0) - 1;
+  }
+
   for(let idx=0; idx<route.length; idx++){
     const node = route[idx];
-    for(const req of Object.values(manifest)){
-      if(node.id === req.pickup.id) currentPassengers++;
-      if(node.id === req.drop.id) currentPassengers--;
-    }
+    currentPassengers += delta[node.id] || 0;
     passengerCounts.push(currentPassengers);
     if(currentPassengers > capacity) return {valid:false, cost:Infinity, passengerCounts:[], reason:'capacity'};
   }
@@ -427,6 +504,7 @@ let route = [];
 let manifest = {};
 let acceptedList = [];
 let rejectedList = [];
+let cancelledList = [];
 let reqCounter = 0;
 let armedMode = null;
 let pendingPickup = null, pendingDrop = null;
@@ -440,6 +518,29 @@ let mxSource = {id:'S', kind:'source', label:'S'};
 let mxDestination = {id:'E', kind:'destination', label:'E'};
 
 function mkId(prefix){ return prefix + '_' + (++reqCounter); }
+
+/* =========================================================
+   TOASTS + LIVE CLOCK
+   ========================================================= */
+
+function showToast(message, kind='ok'){
+  const stack = document.getElementById('toast-stack');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind==='ok' ? '' : kind);
+  t.textContent = message;
+  stack.appendChild(t);
+  setTimeout(()=>{
+    t.classList.add('leaving');
+    setTimeout(()=>t.remove(), 260);
+  }, 2600);
+}
+
+function tickClock(){
+  const el = document.getElementById('clock');
+  if(el) el.innerHTML = '<b>' + new Date().toLocaleTimeString() + '</b>';
+}
+setInterval(tickClock, 1000);
+tickClock();
 
 /* =========================================================
    MODE SWITCHING
@@ -459,7 +560,7 @@ function switchMode(mode){
   document.getElementById('schematic-col').classList.toggle('hidden', mode!=='matrix');
 
   // Reset dispatch state when switching modes (distance semantics differ completely)
-  route = []; manifest = {}; acceptedList = []; rejectedList = [];
+  route = []; manifest = {}; acceptedList = []; rejectedList = []; cancelledList = [];
   document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
 
   if(mode === 'geo'){
@@ -520,7 +621,7 @@ function iconFor(kind){
   };
   const p = palette[kind];
   return L.divIcon({
-    html:`<div style="width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:${p.size>26?11:9.5}px;font-weight:600;color:${p.text};box-shadow:0 2px 6px rgba(0,0,0,.4);">${p.label}</div>`,
+    html:`<div style="animation:popIn .35s ease; width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:${p.size>26?11:9.5}px;font-weight:600;color:${p.text};box-shadow:0 2px 10px rgba(0,0,0,.45), 0 0 14px ${p.border}55;">${p.label}</div>`,
     className:'', iconSize:[p.size,p.size], iconAnchor:[p.size/2,p.size/2]
   });
 }
@@ -727,7 +828,7 @@ document.getElementById('mx-submit-req').addEventListener('click', ()=>{
 });
 
 document.getElementById('mx-reset-btn').addEventListener('click', ()=>{
-  route = [mxSource, mxDestination]; manifest = {}; acceptedList=[]; rejectedList=[];
+  route = [mxSource, mxDestination]; manifest = {}; acceptedList=[]; rejectedList=[]; cancelledList=[];
   document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
   renderAll();
 });
@@ -741,10 +842,38 @@ function processRequest(req){
   logEvent(result, req);
   if(result.accepted){
     route = result.route; manifest = result.manifest; acceptedList.push(req);
+    showToast(`${req.id} accepted — Δ${result.costIncrease.toFixed(2)} km`, 'ok');
   } else {
     rejectedList.push(req);
+    showToast(`${req.id} rejected — ${REASON_TEXT[result.reason] || 'constraint violated'}`, 'no');
   }
   document.getElementById('stat-time').textContent = result.elapsedMs.toFixed(2) + ' ms';
+  renderAll();
+}
+
+/* Cancel an already-accepted request: drop it from the manifest and remove
+   its pickup/drop stops from the route, preserving every other stop's order.
+   Removing a request can only reduce load on remaining riders, so the rest
+   of the manifest stays valid without needing to re-run the search. */
+function cancelRequest(reqId){
+  const req = manifest[reqId];
+  if(!req) return;
+  const newManifest = Object.assign({}, manifest);
+  delete newManifest[reqId];
+  route = route.filter(node => node.id !== req.pickup.id && node.id !== req.drop.id);
+  manifest = newManifest;
+  acceptedList = acceptedList.filter(r => r.id !== reqId);
+  cancelledList.push(req);
+
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty-note')) feed.innerHTML = '';
+  const ts = new Date().toLocaleTimeString();
+  const item = document.createElement('div');
+  item.className = 'feed-item cancel';
+  item.innerHTML = `<span class="ts">${ts}</span>${reqId} <b>cancelled</b> — removed from route`;
+  feed.prepend(item);
+
+  showToast(`${reqId} cancelled and removed from route`, 'cancel');
   renderAll();
 }
 
@@ -825,6 +954,7 @@ function renderRouteAndStats(){
   document.getElementById('stat-dist').textContent = dist.toFixed(2) + ' km';
   document.getElementById('stat-accepted').textContent = acceptedList.length;
   document.getElementById('stat-rejected').textContent = rejectedList.length;
+  document.getElementById('stat-cancelled').textContent = cancelledList.length;
 
   const list = document.getElementById('route-list');
   list.innerHTML = '';
@@ -844,13 +974,40 @@ function renderRouteAndStats(){
     if(route.length > 1){
       routeLine.setLatLngs(route.map(n=>[n.lat,n.lng]));
       map.fitBounds(routeLine.getBounds().pad(0.25));
+      const el = routeLine.getElement && routeLine.getElement();
+      if(el) el.classList.add('flow-line');
     } else { routeLine.setLatLngs([]); }
   } else {
     renderTripline(check);
   }
 }
 
-function renderAll(){ renderMarkers(); renderRouteAndStats(); }
+function renderManifestList(){
+  const list = document.getElementById('manifest-list');
+  list.innerHTML = '';
+  const active = Object.values(manifest);
+  if(active.length === 0){
+    list.innerHTML = '<li class="empty-note" style="list-style:none;">no requests on board yet</li>';
+    return;
+  }
+  active.forEach(req=>{
+    const li = document.createElement('li');
+    li.className = 'manifest-item';
+    const pLabel = req.pickup.label || req.pickup.id;
+    const dLabel = req.drop.label || req.drop.id;
+    li.innerHTML = `
+      <span>
+        <span class="mi-label">${req.id}</span> &nbsp;${pLabel} → ${dLabel}
+        <div class="mi-sub">${req.dist.toFixed(1)}km base · Δ${req.flex}</div>
+      </span>
+      <button class="cancel-btn" data-id="${req.id}" title="Cancel this request">×</button>
+    `;
+    li.querySelector('.cancel-btn').addEventListener('click', e=>cancelRequest(e.currentTarget.dataset.id));
+    list.appendChild(li);
+  });
+}
+
+function renderAll(){ renderMarkers(); renderRouteAndStats(); renderManifestList(); }
 
 /* =========================================================
    CAPACITY
@@ -892,7 +1049,7 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
   document.getElementById('live-dot').classList.remove('on');
   document.getElementById('live-text').textContent='idle';
   source=null; destination=null; route=[]; manifest={};
-  acceptedList=[]; rejectedList=[]; pendingPickup=null; pendingDrop=null;
+  acceptedList=[]; rejectedList=[]; cancelledList=[]; pendingPickup=null; pendingDrop=null;
   document.getElementById('feed').innerHTML = '<div class="empty-note">dispatch events will appear here</div>';
   updateReqPreview(); renderAll();
 });
