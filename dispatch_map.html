@@ -1,790 +1,1217 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OmniRoute 3D - Operations Dashboard</title>
-    <style>
-        :root {
-            --bg-main: #f3f6fa;
-            --panel-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --accent-blue: #2563eb;
-            --accent-bg-blue: #eff6ff;
-            --danger-red: #ef4444;
-        }
+<meta charset="UTF-8">
+<title>OmniRoute 3D — Intelligent Fleet Dispatch Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700&family=JetBrains+Mono:wght=400;500;600&display=swap" rel="stylesheet">
+<!-- MapLibre GL JS for WebGL-based 3D Rendering -->
+<link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+<style>
+  :root {
+    /* Slate & Ocean Palette */
+    --bg-app: #f1f5f9;           
+    --bg-card: #ffffff;          
+    --border-light: #e2e8f0;     
+    --border-hover: #cbd5e1;     
+    --text-primary: #0f172a;     
+    --text-secondary: #475569;   
+    --text-muted: #94a3b8;       
+    
+    /* Accents */
+    --primary: #2563eb;          /* Deep Cobalt Blue */
+    --primary-light: #eff6ff;    
+    --success: #0d9488;          /* Ocean Teal */
+    --success-light: #f0fdfa;
+    --danger: #dc2626;           /* Crimson */
+    --danger-light: #fef2f2;
+    --warning: #d97706;          /* Warning Gold */
+    --warning-light: #fef3c7;
+    --accent: #4f46e5;           /* Indigo */
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
 
-        body, html {
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-        }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
+  
+  .mono { font-family: var(--font-mono); }
 
-        /* Top Header */
-        .top-navbar {
-            height: 60px;
-            background: #ffffff;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            z-index: 100;
-            position: relative;
-        }
+  /* Welcome Screen Overlay */
+  #welcome-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle at top right, #eff6ff 0%, #f1f5f9 100%);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.6s cubic-bezier(0.85, 0, 0.15, 1), opacity 0.5s ease;
+  }
+  #welcome-screen.hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .welcome-card {
+    text-align: center;
+    max-width: 540px;
+    padding: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+  }
+  .welcome-card h1 { font-size: 32px; font-weight: 800; color: var(--text-primary); margin: 0 0 12px 0; }
+  .welcome-card h1 span { color: var(--primary); }
+  .welcome-card p { font-size: 15px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 32px 0; }
+  .enter-btn {
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 16px 36px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s ease;
+  }
+  .enter-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 12px 24px -5px rgba(37, 99, 235, 0.4); }
 
-        .brand-logo {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-        .brand-logo span {
-            color: var(--accent-blue);
-            font-weight: 400;
-            font-size: 0.9rem;
-            margin-left: 8px;
-            border-left: 1px solid var(--border-color);
-            padding-left: 8px;
-        }
+  /* App Layout */
+  .app {
+    display: grid;
+    grid-template-columns: 360px 1fr 340px;
+    grid-template-rows: 70px 1fr;
+    height: 100vh;
+  }
+  @media (max-width: 1200px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 500px auto; height: auto; }
+  }
 
-        .nav-tabs {
-            display: flex;
-            gap: 8px;
-        }
+  /* Top Bar */
+  .topbar {
+    grid-column: 1 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-card);
+    z-index: 100;
+  }
+  
+  .topbar h1 { font-size: 18px; font-weight: 700; margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+  .topbar h1 .tag { color: var(--primary); }
+  .topbar .sub { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
 
-        .nav-tab {
-            padding: 8px 16px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: transparent;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-        }
+  .clock {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+  }
+  .clock b { color: var(--text-primary); font-weight: 600; }
 
-        .nav-tab.active {
-            background: var(--accent-bg-blue);
-            color: var(--accent-blue);
-            border-color: rgba(37, 99, 235, 0.2);
-        }
+  .mode-tabs { display: flex; gap: 4px; background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 10px; padding: 4px; }
+  .mode-tab {
+    background: none; border: none; color: var(--text-secondary); font-family: var(--font-sans);
+    font-weight: 500; font-size: 12px; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;
+  }
+  .mode-tab:hover { color: var(--text-primary); }
+  .mode-tab.active { background: var(--bg-card); color: var(--primary); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); font-weight: 600; }
 
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+  .live-pill {
+    display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-secondary); background: var(--bg-app); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-light);
+  }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .live-dot.on { background: var(--success); animation: softPulse 1.6s infinite; }
 
-        .time-display {
-            background: #f1f5f9;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-family: monospace;
-        }
+  @keyframes softPulse {
+    0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(13, 148, 136, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+  }
 
-        .exit-btn {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+  /* Sidebars */
+  .sidebar, .rightbar { overflow-y: auto; padding: 24px; background: var(--bg-app); display: flex; flex-direction: column; gap: 16px; }
+  .sidebar { border-right: 1px solid var(--border-light); }
+  .rightbar { border-left: 1px solid var(--border-light); }
 
-        /* Dashboard Core Workspace Layout */
-        .workspace {
-            display: flex;
-            height: calc(100vh - 60px);
-            width: 100%;
-            position: relative;
-        }
+  /* Control Panels */
+  .panel {
+    background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02); transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .panel:hover { border-color: var(--border-hover); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); }
+  .panel h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);
+    margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px; font-weight: 600;
+  }
+  .panel h2::before { content: ''; width: 6px; height: 12px; background: var(--primary); border-radius: 2px; display: inline-block; }
 
-        /* Left/Config Panel (Made Big & Scrollable) */
-        .panel-left {
-            width: 32%;
-            min-width: 25%;
-            max-width: 50%;
-            height: 100%;
-            background: var(--panel-bg);
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .mode-btn {
+    background: var(--bg-app); border: 1px solid var(--border-light); color: var(--text-secondary);
+    padding: 8px; border-radius: 8px; font-family: var(--font-sans); font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .mode-btn:hover { border-color: var(--border-hover); background: #f1f5f9; color: var(--text-primary); }
+  .mode-btn.armed { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  .mode-btn.source.armed, .mode-btn.destination.armed { background: var(--warning-light); border-color: var(--warning); color: #92400e; }
+  
+  .hint { font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px; }
 
-        /* Center Map Wrapper */
-        .panel-center {
-            flex: 1;
-            height: 100%;
-            position: relative;
-            background: #e2e8f0;
-        }
+  .coord-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .coord-row input { flex: 1; min-width: 0; padding: 6px 8px !important; font-size: 12px !important; }
 
-        /* Right Telemetry Sidebar */
-        .panel-right {
-            width: 23%;
-            min-width: 18%;
-            max-width: 35%;
-            height: 100%;
-            background: var(--bg-main);
-            border-left: 1px solid var(--border-color);
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+  .req-preview {
+    background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px;
+    padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;
+  }
+  .req-preview b { color: var(--text-primary); }
+  
+  .field-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .field-row > div { flex: 1; }
+  label.field-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+  
+  input[type=text], input[type=number], select {
+    width: 100%; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-primary);
+    font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; border-radius: 6px; transition: all 0.2s ease; outline: none;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
-        /* Dynamic Resizers */
-        .resizer-line {
-            width: 6px;
-            cursor: col-resize;
-            background-color: transparent;
-            transition: background-color 0.2s;
-            z-index: 10;
-        }
-        .resizer-line:hover, .resizer-line.dragging {
-            background-color: var(--accent-blue);
-        }
+  .small-btn {
+    background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-secondary);
+    padding: 6px 10px; border-radius: 6px; font-family: var(--font-sans); font-weight: 500; font-size: 11px; cursor: pointer; transition: all 0.2s ease;
+  }
+  .small-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
-        /* Card Panels with Internal "^" Toggle States */
-        .dashboard-card {
-            background: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            transition: all 0.2s ease;
-        }
+  .submit-btn {
+    width: 100%; background: var(--primary); color: #ffffff; border: none; padding: 10px;
+    font-family: var(--font-sans); font-weight: 600; font-size: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;
+  }
+  .submit-btn:disabled { background: var(--border-light); color: var(--text-muted); cursor: not-allowed; }
+  .submit-btn:hover:not(:disabled) { background: #1d4ed8; }
 
-        .card-trigger-header {
-            width: 100%;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: none;
-            border: none;
-            text-align: left;
-            cursor: pointer;
-            outline: none;
-        }
+  .sim-row { display: flex; gap: 8px; }
+  .sim-btn {
+    flex: 1; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-primary);
+    padding: 8px; border-radius: 8px; font-family: var(--font-sans); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;
+  }
+  .sim-btn:hover { border-color: var(--border-hover); background: var(--bg-app); }
+  .sim-btn.active { border-color: var(--success); color: var(--success); background: var(--success-light); font-weight: 600; }
+  .sim-btn.reset:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-light); }
 
-        .card-trigger-header:hover {
-            background-color: #fafafa;
-        }
+  /* Map and Schematic Columns */
+  .map-col { position: relative; border-right: 1px solid var(--border-light); background: #ffffff; }
+  #map { width: 100%; height: 100%; }
+  
+  .map-overlay-tips {
+    position: absolute; bottom: 24px; left: 24px; background: rgba(255, 255, 255, 0.9);
+    padding: 10px 14px; border-radius: 8px; font-size: 10px; color: var(--text-secondary);
+    border: 1px solid var(--border-light); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.05); backdrop-filter: blur(4px); pointer-events: none;
+  }
 
-        .header-title-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+  .schematic-col { display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; background: var(--bg-app); }
+  .tripline-wrap { width: 100%; max-width: 800px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .tripline { position: relative; display: flex; align-items: flex-end; min-width: min-content; padding-top: 26px; }
+  .stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 90px; flex: 1; }
+  .stop .rail { position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--primary); z-index: 0; }
+  .stop:first-child .rail { left: 50%; width: 50%; }
+  .stop:last-child .rail { width: 50%; }
+  .stop .node { width: 14px; height: 14px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--primary); z-index: 1; margin-bottom: 8px; }
+  .stop.terminal .node { background: var(--primary); width: 18px; height: 18px; }
+  .stop .occ-bar { width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; margin-bottom: 6px; }
+  .stop .occ-num { font-family: var(--font-mono); font-size: 10px; color: var(--accent); margin-top: -4px; margin-bottom: 4px; font-weight: 600; }
+  .stop .stop-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); text-align: center; font-weight: 500; }
+  .stop .stop-sub { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
-        .card-icon {
-            font-size: 1.1rem;
-        }
+  /* Matrix Controls */
+  .loc-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .loc-chip {
+    display: flex; align-items: center; gap: 6px; background: var(--bg-app); border: 1px solid var(--border-light);
+    border-radius: 20px; padding: 4px 10px 4px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-primary);
+  }
+  .loc-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .loc-chip button:hover { color: var(--danger); }
+  .add-loc-row { display: flex; gap: 8px; }
+  .add-loc-row input { flex: 1; }
 
-        .card-title-text {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #0f172a;
-        }
+  .matrix-wrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; }
+  table.matrix { border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; width: 100%; background: var(--bg-card); }
+  table.matrix th, table.matrix td { padding: 8px 10px; text-align: center; border: 1px solid var(--border-light); }
+  table.matrix th { color: var(--text-secondary); background: var(--bg-app); font-weight: 600; min-width: 44px; }
+  table.matrix td.diag { color: var(--text-muted); background: var(--bg-app); }
+  table.matrix td input { width: 50px; padding: 4px; text-align: center; font-size: 12px; border: 1px solid transparent; background: transparent; border-radius: 4px; }
+  table.matrix td input:focus { border-color: var(--primary); background: var(--bg-card); outline: none; }
 
-        .caret-toggle {
-            font-size: 1rem;
-            font-weight: bold;
-            color: var(--text-muted);
-            transition: transform 0.2s ease;
-        }
+  /* Stats and Sidebar Layouts */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-box { background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px; padding: 10px; }
+  .stat-box .stat-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 2px; }
+  .stat-box .stat-value { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .stat-box.accent .stat-value { color: var(--primary); }
 
-        .dashboard-card.collapsed .caret-toggle {
-            transform: rotate(180deg);
-        }
+  .route-list, .manifest-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 11px; }
+  .route-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-light); }
+  .route-list li:last-child { border-bottom: none; }
+  .route-list .occ { color: var(--accent); font-weight: 600; }
+  .route-list .kind-tag { font-size: 8px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-left: 4px; }
 
-        .card-content-body {
-            padding: 0 16px 16px 16px;
-            border-top: 1px dashed var(--border-color);
-            margin-top: 0;
-            padding-top: 16px;
-        }
+  .manifest-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+  .manifest-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 8px 10px;
+    background: var(--bg-app); border-left: 3px solid var(--primary); border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light); border-right: 1px solid var(--border-light); border-radius: 6px;
+  }
+  .manifest-item .mi-label { color: var(--text-primary); font-weight: 600; }
+  .manifest-item .mi-sub { color: var(--text-secondary); font-size: 9px; margin-top: 1px; }
+  
+  .cancel-btn {
+    background: #ffffff; border: 1px solid var(--border-light); color: var(--danger);
+    width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
+  }
+  .cancel-btn:hover { background: var(--danger); color: #ffffff; border-color: var(--danger); }
 
-        .dashboard-card.collapsed .card-content-body {
-            display: none;
-        }
+  /* Event Feed & History Panels */
+  .feed { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; font-family: var(--font-mono); font-size: 10px; }
+  .feed-item { padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--border-light); background: var(--bg-app); }
+  .feed-item.ok { border-left-color: var(--success); background: var(--success-light); }
+  .feed-item.no { border-left-color: var(--danger); background: var(--danger-light); }
+  .feed-item.cancel { border-left-color: var(--accent); background: #f5f3ff; }
+  .feed-item .ts { color: var(--text-muted); margin-right: 4px; }
+  .feed-item .reason { color: var(--danger); font-weight: 500; }
+  .empty-note { color: var(--text-muted); font-size: 11px; font-style: italic; }
+  
+  .history-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; font-family: var(--font-mono); font-size: 10px; }
+  .history-item { display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid var(--border-light); }
+  .history-item .status-tag { font-weight: 600; text-transform: uppercase; font-size: 9px; }
+  .history-item .status-tag.accepted { color: var(--success); }
+  .history-item .status-tag.rejected { color: var(--danger); }
+  
+  .hidden { display: none !important; }
+  .mapbox-div-icon { background: transparent; border: none; }
 
-        /* Form Controls */
-        .input-group {
-            margin-bottom: 12px;
-        }
-        .input-group label {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            color: var(--text-main);
-            outline: none;
-        }
-
-        /* Tabular Input View for Multiple Requests */
-        .table-wrapper {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        th {
-            background: #f8fafc;
-            padding: 10px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-color);
-        }
-        td {
-            padding: 8px;
-            border-bottom: 1px solid var(--border-color);
-            background: #fff;
-        }
-        .td-input {
-            width: 100%;
-            padding: 6px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-        .map-select-btn {
-            background: #f1f5f9;
-            border: 1px solid var(--border-color);
-            padding: 6px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 0.8rem;
-        }
-        .map-select-btn:hover {
-            background: var(--accent-bg-blue);
-            color: var(--accent-blue);
-        }
-
-        /* Interactive Map Simulation Canvas */
-        #mapCanvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            background-color: #f4f3f0;
-        }
-
-        .map-controls-floating {
-            position: absolute;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            color: var(--text-muted);
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        /* Right Sidebar Telemetry Blocks */
-        .telemetry-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 16px;
-            border: 1px solid var(--border-color);
-        }
-        .telemetry-card h4 {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--accent-blue);
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
-        }
-        .metric-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .metric-box {
-            background: #f8fafc;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        .metric-label {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-        .metric-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        .action-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .btn {
-            flex: 1;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid var(--border-color);
-            background: #fff;
-        }
-        .btn.btn-primary {
-            background: var(--accent-blue);
-            color: #fff;
-            border: none;
-        }
-        .btn.btn-danger {
-            color: var(--danger-red);
-            border-color: rgba(239, 68, 68, 0.2);
-        }
-    </style>
+  #toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .toast {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-primary);
+    background: var(--bg-card); border: 1px solid var(--border-light); border-left: 4px solid var(--success);
+    padding: 10px 16px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); max-width: 300px;
+  }
+  .toast.no { border-left-color: var(--danger); }
+  .toast.cancel { border-left-color: var(--accent); }
+</style>
 </head>
 <body>
 
-    <!-- Header Area -->
-    <header class="top-navbar">
-        <div class="brand-logo">OmniRoute 3D <span>Operations Dashboard</span></div>
-        <div class="nav-tabs">
-            <button class="nav-tab active">🗺️ Map & Geocoding</button>
-            <button class="nav-tab">📊 Distance Matrix</button>
+<!-- WELCOME INTRO SPLASH PAGE -->
+<div id="welcome-screen">
+  <div class="welcome-card">
+    <h1>Welcome to <span>OmniRoute 3D</span></h1>
+    <p>An advanced dynamic fleet routing engine. Real-time scheduling, WebGL building extrusions, adaptive detour window checks, and live telemetry tracking aggregated into a unified operations center.</p>
+    <button class="enter-btn" onclick="enterApp()">Enter Ride Sharing Workspace →</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <h1>OmniRoute <span class="tag">3D</span> <span class="sub">— Operations Dashboard</span></h1>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-geo">🗺️ Map & Geocoding</button>
+      <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="live-pill"><span class="live-dot" id="live-dot"></span><span id="live-text">idle</span></div>
+    </div>
+  </div>
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    
+    <!-- ONE-TIME SYSTEM SETUP SECTION -->
+    <div class="panel">
+      <h2>System Configuration</h2>
+      <div class="hint">Define your operational terminal hubs and individual carrier constraints.</div>
+      <div class="field-row">
+        <div>
+          <label class="field-label">Vehicle Capacity</label>
+          <input type="number" id="capacity" value="3" min="1">
         </div>
-        <div class="nav-right">
-            <div class="time-display" id="liveTime">11:50:14 am</div>
-            <button class="exit-btn"><span style="color:var(--danger-red)">■</span> Exit Workspace</button>
+      </div>
+      <div id="geo-setup-inputs">
+        <div class="mode-grid">
+          <button class="mode-btn source" id="mode-source">📍 Arm Source</button>
+          <button class="mode-btn destination" id="mode-destination">🏁 Arm Dest</button>
         </div>
-    </header>
-
-    <!-- Main Dynamic Workspace Layout -->
-    <div class="workspace" id="workspaceContainer">
-        
-        <!-- Left Panel Area (Adjustable, Wide Layout) -->
-        <section class="panel-left" id="leftPanel">
-            
-            <!-- System Configuration Collapsible Card -->
-            <div class="dashboard-card" id="sysConfigCard">
-                <button class="card-trigger-header" onclick="toggleCard('sysConfigCard')">
-                    <div class="header-title-area">
-                        <span class="card-icon">⚙️</span>
-                        <span class="card-title-text">System Configuration</span>
-                    </div>
-                    <span class="caret-toggle">^</span>
-                </button>
-                <div class="card-content-body">
-                    <div class="input-group">
-                        <label>Optimization Hub Target</label>
-                        <select>
-                            <option>Primary Central Hub - Alpha</option>
-                            <option>Secondary Distribution - Beta</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Max Bound Capacity Radius (km)</label>
-                        <input type="number" value="75">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Create New Request Collapsible Card -->
-            <div class="dashboard-card" id="newRequestCard">
-                <button class="card-trigger-header" onclick="toggleCard('newRequestCard')">
-                    <div class="header-title-area">
-                        <span class="card-icon">➕</span>
-                        <span class="card-title-text">Create New Request Setup</span>
-                    </div>
-                    <span class="caret-toggle">^</span>
-                </button>
-                <div class="card-content-body">
-                    <div class="input-group">
-                        <label>Client Request Group Reference</label>
-                        <input type="text" value="REQ-MANIFEST-2026">
-                    </div>
-                    <div class="input-group">
-                        <label>Service Priority Class</label>
-                        <select>
-                            <option>High Priority Express</option>
-                            <option>Standard Window</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Multiple Request Static Section View Grid -->
-            <div class="dashboard-card">
-                <div class="card-trigger-header" style="cursor: default;">
-                    <div class="header-title-area">
-                        <span class="card-icon">📋</span>
-                        <span class="card-title-text">Add Multiple Request Tracking</span>
-                    </div>
-                </div>
-                <div class="card-content-body" style="border-top: 1px solid var(--border-color)">
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Pickup Column</th>
-                                    <th>Dropoff Column</th>
-                                    <th>Flexibility</th>
-                                    <th>Set on Map</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><input type="text" class="td-input" value="Terminal Point A"></td>
-                                    <td><input type="text" class="td-input" value="Delivery Node B"></td>
-                                    <td>
-                                        <select class="td-input">
-                                            <option>Strict</option>
-                                            <option>Flexible</option>
-                                        </select>
-                                    </td>
-                                    <td><button class="map-select-btn" onclick="highlightRoute(0)">📍 Trace 1</button></td>
-                                </tr>
-                                <tr>
-                                    <td><input type="text" class="td-input" value="Distribution Center C"></td>
-                                    <td><input type="text" class="td-input" value="Urban Store D"></td>
-                                    <td>
-                                        <select class="td-input">
-                                            <option>Flexible</option>
-                                            <option>Strict</option>
-                                        </select>
-                                    </td>
-                                    <td><button class="map-select-btn" onclick="highlightRoute(1)">📍 Trace 2</button></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Simulation Controls Block Box Layout -->
-            <div class="dashboard-card">
-                <div class="card-content-body" style="padding-top: 16px;">
-                    <label style="font-size: 0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Live Simulation Suite</label>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 6px 0 12px 0;">Stress test active navigation models inside constraints.</p>
-                    <div class="action-row">
-                        <button class="btn btn-primary" onclick="startDirectionalAnimation()">▶ Start Sim</button>
-                        <button class="btn btn-danger" onclick="resetSimulation()">⟲ Reset All</button>
-                    </div>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Dynamic Drag Resizer 1 (Between Left panel and Map) -->
-        <div class="resizer-line" id="resizerLeft"></div>
-
-        <!-- Center Map Panel (Adjustable Viewport sizing via Cursor) -->
-        <main class="panel-center" id="centerPanel">
-            <canvas id="mapCanvas"></canvas>
-            <div class="map-controls-floating">
-                🖲️ Viewport Controls: Click tracking points to change vector paths
-            </div>
-        </main>
-
-        <!-- Dynamic Drag Resizer 2 (Between Map and Right panel) -->
-        <div class="resizer-line" id="resizerRight"></div>
-
-        <!-- Right Side Panel Component (Diagnostics Ledger) -->
-        <aside class="panel-right" id="rightPanel">
-            
-            <div class="telemetry-card">
-                <h4>📊 Telemetry Diagnostics</h4>
-                <div class="metric-grid">
-                    <div class="metric-box">
-                        <div class="metric-label">Total Dist</div>
-                        <div class="metric-value" style="color: var(--accent-blue);" id="totalDistLabel">3.38 km</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="metric-label">Compute Time</div>
-                        <div class="metric-value">— ms</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="metric-label">Accepted</div>
-                        <div class="metric-value">0</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="metric-label">Rejected</div>
-                        <div class="metric-value">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="telemetry-card">
-                <h4>⛓️ Active Core Manifest</h4>
-                <p style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No active manifest tracks</p>
-            </div>
-
-            <div class="telemetry-card">
-                <h4>🛣️ Calculated Routing Steps</h4>
-                <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                        <span>1. S Source</span> <span style="font-weight: 600; color: var(--accent-blue);">0 📍</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>2. E Destination</span> <span style="font-weight: 600; color: var(--accent-blue);">0 📍</span>
-                    </div>
-                </div>
-            </div>
-
-        </aside>
-
+        <div class="coord-row">
+          <input type="number" step="0.0001" id="src-lat" placeholder="Src Lat">
+          <input type="number" step="0.0001" id="src-lng" placeholder="Src Lng">
+        </div>
+        <div class="coord-row" style="margin-bottom: 12px;">
+          <input type="number" step="0.0001" id="dst-lat" placeholder="Dest Lat">
+          <input type="number" step="0.0001" id="dst-lng" placeholder="Dest Lng">
+        </div>
+        <button class="small-btn" id="apply-anchors-btn" style="width:100%;">Apply Active System Layout</button>
+      </div>
     </div>
 
-    <!-- Interface Controller Logic Script -->
-    <script>
-        // --- 1. Collapsible Section Implementation ("^" Key Handling) ---
-        function toggleCard(id) {
-            const card = document.getElementById(id);
-            card.classList.toggle('collapsed');
-        }
-
-        // --- 2. Live Cursor Resizing Engine Logic ---
-        const container = document.getElementById('workspaceContainer');
-        const leftPanel = document.getElementById('leftPanel');
-        const centerPanel = document.getElementById('centerPanel');
-        const rightPanel = document.getElementById('rightPanel');
+    <!-- GEO GRAPH INTERFACE PANELS -->
+    <div id="geo-panels">
+      <div class="panel">
+        <h2>New Request (Geocoded)</h2>
+        <div class="hint">Type a place name (e.g., IIT Dharwad, Vidyagiri) to locate, then click map anytime to fine-tune coords perfectly.</div>
         
-        const resizerLeft = document.getElementById('resizerLeft');
-        const resizerRight = document.getElementById('resizerRight');
+        <div class="field-row">
+          <div>
+            <label class="field-label">Pickup Hub Location</label>
+            <select id="pu-place-select">
+              <option value="">-- Choose Pickup Place or Click Map --</option>
+              <option value="iit">IIT Dharwad Campus</option>
+              <option value="junction">Dharwad Railway Junction</option>
+              <option value="sdm">SDM College Area</option>
+              <option value="vidyagiri">Vidyagiri District</option>
+              <option value="hubli_rd">Hubli Road Entry</option>
+            </select>
+          </div>
+        </div>
+        <div class="mode-grid">
+          <button class="mode-btn pickup" id="mode-pickup">🟢 Click Map Pickup</button>
+        </div>
 
-        let activeResizer = null;
+        <div class="field-row" style="margin-top: 10px;">
+          <div>
+            <label class="field-label">Dropoff Hub Location</label>
+            <select id="dr-place-select">
+              <option value="">-- Choose Dropoff Place or Click Map --</option>
+              <option value="iit">IIT Dharwad Campus</option>
+              <option value="junction">Dharwad Railway Junction</option>
+              <option value="sdm">SDM College Area</option>
+              <option value="vidyagiri">Vidyagiri District</option>
+              <option value="hubli_rd">Hubli Road Entry</option>
+            </select>
+          </div>
+        </div>
+        <div class="mode-grid">
+          <button class="mode-btn drop" id="mode-drop">🔷 Click Map Dropoff</button>
+        </div>
 
-        resizerLeft.addEventListener('mousedown', (e) => startDrag(e, 'left'));
-        resizerRight.addEventListener('mousedown', (e) => startDrag(e, 'right'));
+        <div class="req-preview" id="req-preview">pickup: <b>—</b><br>dropoff: <b>—</b><br>base distance: <b>—</b></div>
+        <div class="field-row">
+          <div><label class="field-label">Flexibility Δ (km)</label><input type="number" id="req-flex" value="1" min="0" step="0.5"></div>
+        </div>
+        <button class="submit-btn" id="submit-req" disabled>Submit Live Request →</button>
+      </div>
 
-        function startDrag(e, side) {
-            activeResizer = side;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            if(side === 'left') resizerLeft.classList.add('dragging');
-            if(side === 'right') resizerRight.classList.add('dragging');
-        }
+      <div class="panel">
+        <h2>Live Simulation Suite</h2>
+        <div class="hint">Stress test the engine inside active boundaries.</div>
+        <div class="sim-row">
+          <button class="sim-btn" id="sim-toggle">▶ Start</button>
+          <button class="sim-btn reset" id="reset-btn">⟲ Reset All</button>
+        </div>
+      </div>
+    </div>
 
-        document.addEventListener('mousemove', (e) => {
-            if (!activeResizer) return;
+    <!-- MATRIX INTERFACE PANELS -->
+    <div id="matrix-panels" class="hidden">
+      <div class="panel">
+        <h2>Matrix Settings</h2>
+        <div class="field-row">
+          <div><label class="field-label">Source Node ID</label><input type="text" id="mx-src-id" value="S"></div>
+          <div><label class="field-label">Dest Node ID</label><input type="text" id="mx-dst-id" value="E"></div>
+        </div>
+        <button class="small-btn" id="mx-apply-anchors" style="width:100%;">Update Matrix Labels</button>
+      </div>
 
-            const containerWidth = container.clientWidth;
-            const pointerX = e.clientX;
+      <div class="panel">
+        <h2>Abstract Locations</h2>
+        <div class="loc-chip-row" id="loc-chip-row"></div>
+        <div class="add-loc-row">
+          <input type="text" id="new-loc-id" placeholder="Node Key (e.g. P1)">
+          <button class="small-btn" id="add-loc-btn">+ Add</button>
+        </div>
+      </div>
 
-            if (activeResizer === 'left') {
-                const targetPercentage = (pointerX / containerWidth) * 100;
-                if (targetPercentage > 20 && targetPercentage < 50) {
-                    leftPanel.style.width = `${targetPercentage}%`;
-                }
-            } else if (activeResizer === 'right') {
-                const targetPercentage = 100 - ((pointerX / containerWidth) * 100);
-                if (targetPercentage > 15 && targetPercentage < 35) {
-                    rightPanel.style.width = `${targetPercentage}%`;
-                }
-            }
-            resizeCanvas();
-        });
+      <div class="panel">
+        <h2>Distance Matrix Input (km)</h2>
+        <div class="matrix-wrap" id="matrix-wrap"></div>
+      </div>
 
-        document.addEventListener('mouseup', () => {
-            if (!activeResizer) return;
-            resizerLeft.classList.remove('dragging');
-            resizerRight.classList.remove('dragging');
-            activeResizer = null;
-            document.body.style.cursor = 'default';
-            document.body.style.userSelect = 'auto';
-        });
+      <div class="panel">
+        <h2>New Matrix Entry</h2>
+        <div class="field-row">
+          <div><label class="field-label">Pickup</label><select id="mx-pickup"></select></div>
+          <div><label class="field-label">Dropoff</label><select id="mx-drop"></select></div>
+        </div>
+        <div class="req-preview" id="mx-req-preview">base distance: <b>—</b></div>
+        <div class="field-row">
+          <div><label class="field-label">Flexibility Δ</label><input type="number" id="mx-req-flex" value="1" min="0" step="0.5"></div>
+        </div>
+        <button class="submit-btn" id="mx-submit-req">Submit Matrix Request →</button>
+      </div>
+    </div>
+  </div>
 
-        // --- 3. Route Mapping Canvas Canvas Engine with Arrow Vectors ---
-        const canvas = document.getElementById('mapCanvas');
-        const ctx = canvas.getContext('2d');
-        let animationFrameId = null;
-        let animationProgress = 0;
-        let isAnimating = false;
+  <!-- CENTER MAP/SCHEMATIC VIEWER -->
+  <div class="map-col" id="map-col">
+    <div id="map"></div>
+    <div class="map-overlay-tips">
+      🖱️ <b>3D Viewport Controls:</b> Hold <b>Right Click / Ctrl + Drag</b> to tilt camera pitch, rotate bearing, and view structures.
+    </div>
+  </div>
+  <div class="schematic-col hidden" id="schematic-col">
+    <div class="tripline-wrap"><div class="tripline" id="tripline"></div></div>
+  </div>
 
-        // Mock coordinates mimicking coordinates on a canvas screen map
-        const routes = [
-            {
-                source: { x: 150, y: 180, label: "Terminal Point A" },
-                dest: { x: 450, y: 120, label: "Delivery Node B" },
-                distance: "4.12 km"
-            },
-            {
-                source: { x: 200, y: 350, label: "Distribution Center C" },
-                dest: { x: 520, y: 280, label: "Urban Store D" },
-                distance: "2.85 km"
-            }
-        ];
-        
-        let currentRouteIndex = 0;
+  <!-- RIGHT SIDEBAR -->
+  <div class="rightbar">
+    <div class="panel">
+      <h2>Telemetry Diagnostics</h2>
+      <div class="stats-grid">
+        <div class="stat-box accent"><div class="stat-label">Total Dist</div><div class="stat-value" id="stat-dist">0.0 km</div></div>
+        <div class="stat-box"><div class="stat-label">Compute Time</div><div class="stat-value" id="stat-time">— ms</div></div>
+        <div class="stat-box"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">0</div></div>
+        <div class="stat-box"><div class="stat-label">Rejected</div><div class="stat-value" id="stat-rejected">0</div></div>
+      </div>
+    </div>
+    
+    <div class="panel">
+      <h2>Active Core Manifest</h2>
+      <ul class="manifest-list" id="manifest-list"><li class="empty-note">No active transit schedules</li></ul>
+    </div>
+    
+    <div class="panel">
+      <h2>Calculated Routing Steps</h2>
+      <ul class="route-list" id="route-list"><li class="empty-note">Establish system layout topology</li></ul>
+    </div>
 
-        function resizeCanvas() {
-            canvas.width = centerPanel.clientWidth;
-            canvas.height = centerPanel.clientHeight;
-            drawMapWorkspace();
-        }
+    <div class="panel">
+      <h2>System Event Feed</h2>
+      <div class="feed" id="feed"><div class="empty-note">Awaiting dynamic inputs...</div></div>
+    </div>
 
-        function drawMapWorkspace() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw simulated grid/roads lines
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 1;
-            for(let i=0; i<canvas.width; i+=40) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            }
-            for(let j=0; j<canvas.height; j+=40) {
-                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
-            }
+    <!-- PERSISTENT REQUEST ARCHIVE HISTORY -->
+    <div class="panel">
+      <h2>Request History Ledger</h2>
+      <div class="history-list" id="history-ledger"><div class="empty-note">No archival logs compiled yet.</div></div>
+    </div>
+  </div>
 
-            // Draw active routing track line
-            const activeRoute = routes[currentRouteIndex];
-            
-            // Base connection vector path line
-            ctx.strokeStyle = '#2563eb';
-            ctx.lineWidth = 4;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(activeRoute.source.x, activeRoute.source.y);
-            ctx.lineTo(activeRoute.dest.x, activeRoute.dest.y);
-            ctx.stroke();
+</div>
 
-            // Draw dynamic movement arrows inside vector track line
-            drawRouteDirectionalArrows(activeRoute.source, activeRoute.dest);
+<div id="toast-stack"></div>
 
-            // Draw Node Points pinout markers
-            drawMapMarker(activeRoute.source, "🟢 SOURCE");
-            drawMapMarker(activeRoute.dest, "🔴 DESTINATION");
-        }
+<script>
+/* =========================================================
+   ROUTING ENGINE
+   ========================================================= */
+const EPSILON = 1e-6;
 
-        function drawMapMarker(point, text) {
-            ctx.fillStyle = '#1e293b';
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+// Predefined geocoding map lookup matrix for Dharwad region
+const PLACES_COORDS = {
+  iit: { lat: 27.5615, lng: 76.6210 },
+  junction: { lat: 27.5530, lng: 76.6346 },
+  sdm: { lat: 27.5420, lng: 76.6410 },
+  vidyagiri: { lat: 27.5510, lng: 76.6620 },
+  hubli_rd: { lat: 27.5710, lng: 76.6550 }
+};
 
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.fillText(text, point.x - 30, point.y - 15);
-        }
+function haversineKm(a, b){
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI/180;
+  const dLng = (b.lng - a.lng) * Math.PI/180;
+  const lat1 = a.lat * Math.PI/180, lat2 = b.lat * Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const ROAD_FACTOR = 1.3;
+function geoDistFn(a, b){ return a.id === b.id ? 0 : haversineKm(a,b) * ROAD_FACTOR; }
 
-        // Draw directional arrows moving from source -> destination
-        function drawRouteDirectionalArrows(src, dest) {
-            const dx = dest.x - src.x;
-            const dy = dest.y - src.y;
-            const lineLength = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
+let matrixDist = {}; 
+function mKey(a,b){ return a+'|'+b; }
+function matrixDistFn(a, b){
+  if(a.id === b.id) return 0;
+  const v = matrixDist[mKey(a.id,b.id)] ?? matrixDist[mKey(b.id,a.id)];
+  return v ?? 0;
+}
+function setMatrixDist(a,b,val){ matrixDist[mKey(a,b)] = val; matrixDist[mKey(b,a)] = val; }
+function getMatrixDist(a,b){ return matrixDist[mKey(a,b)] ?? matrixDist[mKey(b,a)] ?? 0; }
 
-            // Settings for arrow sizing
-            const arrowSpacing = 60; 
-            const arrowLength = 10;
-            const arrowWidth = 6;
+function currentDistFn(a,b){ return MODE === 'geo' ? geoDistFn(a,b) : matrixDistFn(a,b); }
 
-            // Offset shifts arrows along track line if running sim animation
-            const startOffset = isAnimating ? (animationProgress % arrowSpacing) : 0;
+function computeRouteDistance(route){
+  let total = 0;
+  for(let k=1;k<route.length;k++) total += currentDistFn(route[k-1], route[k]);
+  return total;
+}
 
-            ctx.save();
-            ctx.fillStyle = '#ffffff'; // White arrows inside clean blue track line
+function validateDynamicConstraints(route, manifest, capacity){
+  let currentPassengers = 0;
+  const passengerCounts = [];
+  const locationIndices = {};
+  for(let idx=0; idx<route.length; idx++) locationIndices[route[idx].id] = idx;
 
-            for (let d = startOffset; d < lineLength; d += arrowSpacing) {
-                // Calculate position along path vector
-                const arrowX = src.x + (dx * d) / lineLength;
-                const arrowY = src.y + (dy * d) / lineLength;
+  const delta = {};
+  for(const req of Object.values(manifest)){
+    delta[req.pickup.id] = (delta[req.pickup.id] || 0) + 1;
+    delta[req.drop.id] = (delta[req.drop.id] || 0) - 1;
+  }
 
-                ctx.translate(arrowX, arrowY);
-                ctx.rotate(angle);
+  for(let idx=0; idx<route.length; idx++){
+    const node = route[idx];
+    currentPassengers += delta[node.id] || 0;
+    passengerCounts.push(currentPassengers);
+    if(currentPassengers > capacity) return {valid:false, cost:Infinity, passengerCounts:[], reason:'capacity'};
+  }
 
-                // Draw arrow polygon pointing towards target destination
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(-arrowLength, -arrowWidth);
-                ctx.lineTo(-arrowLength + 3, 0); // slight indentation for chevron styling
-                ctx.lineTo(-arrowLength, arrowWidth);
-                ctx.closePath();
-                ctx.fill();
+  const cumulativeDist = new Array(route.length).fill(0);
+  for(let k=1;k<route.length;k++) cumulativeDist[k] = cumulativeDist[k-1] + currentDistFn(route[k-1], route[k]);
 
-                // Reset rotation mapping context matrix
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-            }
-            ctx.restore();
-        }
+  for(const req of Object.values(manifest)){
+    const pPos = locationIndices.hasOwnProperty(req.pickup.id) ? locationIndices[req.pickup.id] : -1;
+    const dPos = locationIndices.hasOwnProperty(req.drop.id) ? locationIndices[req.drop.id] : -1;
+    if(pPos === -1 || dPos === -1 || pPos >= dPos) return {valid:false, cost:Infinity, passengerCounts:[], reason:'chronology'};
 
-        function highlightRoute(index) {
-            currentRouteIndex = index;
-            document.getElementById('totalDistLabel').innerText = routes[index].distance;
-            drawMapWorkspace();
-        }
+    const actualTravelDist = cumulativeDist[dPos] - cumulativeDist[pPos];
+    const maxAllowedDist = req.dist + req.flex;
 
-        function startDirectionalAnimation() {
-            if (isAnimating) return;
-            isAnimating = true;
-            
-            function step() {
-                animationProgress += 1.5; // Controls arrow shift speed step metric
-                drawMapWorkspace();
-                if (isAnimating) {
-                    animationFrameId = requestAnimationFrame(step);
-                }
-            }
-            animationFrameId = requestAnimationFrame(step);
-        }
+    if(actualTravelDist > maxAllowedDist + EPSILON) return {valid:false, cost:Infinity, passengerCounts:[], reason:'flexibility'};
+  }
 
-        function resetSimulation() {
-            isAnimating = false;
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationProgress = 0;
-            highlightRoute(0);
-        }
+  return {valid:true, cost:cumulativeDist[route.length-1], passengerCounts};
+}
 
-        // Window load and live timer setups
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('DOMContentLoaded', () => {
-            resizeCanvas();
-            // Start clock
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('liveTime').innerText = now.toLocaleTimeString().toLowerCase();
-            }, 1000);
-        });
-    </script>
+function insertRequestLive(route, manifest, newRequest, capacity){
+  const startTime = performance.now();
+  const baseRouteCost = computeRouteDistance(route);
+  const startSlot = 1;
+  const endSlot = route.length - 1;
+
+  const testManifest = Object.assign({}, manifest);
+  testManifest[newRequest.id] = newRequest;
+
+  let bestRoute = null;
+  let minCostIncrease = Infinity;
+  let lastFailReason = null;
+
+  for(let i=startSlot; i<=endSlot; i++){
+    for(let j=i; j<=endSlot; j++){
+      const candidateRoute = [
+        ...route.slice(0,i), newRequest.pickup, ...route.slice(i,j),
+        newRequest.drop, ...route.slice(j, route.length)
+      ];
+      const check = validateDynamicConstraints(candidateRoute, testManifest, capacity);
+      if(check.valid){
+        const width = check.cost - baseRouteCost;
+        if(width < minCostIncrease){ minCostIncrease = width; bestRoute = candidateRoute; }
+      } else {
+        lastFailReason = check.reason;
+      }
+    }
+  }
+
+  const elapsedMs = performance.now() - startTime;
+  if(bestRoute){
+    return {accepted:true, route:bestRoute, manifest:testManifest, costIncrease:minCostIncrease, elapsedMs};
+  }
+  return {accepted:false, route, manifest, costIncrease:null, elapsedMs, reason: lastFailReason || 'no-valid-slot'};
+}
+
+/* =========================================================
+   APPLICATION ARCHITECTURE
+   ========================================================= */
+let MODE = 'geo'; 
+let capacity = 3;
+let source = null, destination = null;
+let route = [];
+let manifest = {};
+let requestHistory = []; // Master structural database history log array
+let acceptedList = [];
+let rejectedList = [];
+let cancelledList = [];
+let reqCounter = 0;
+let armedMode = null;
+let pendingPickup = null, pendingDrop = null;
+let simRunning = false, simTimer = null;
+
+let map;
+let markers = {};
+
+let mxLocations = [];
+let mxSource = {id:'S', kind:'source', label:'S'};
+let mxDestination = {id:'E', kind:'destination', label:'E'};
+
+function mkId(prefix){ return prefix + '_' + (++reqCounter); }
+
+function enterApp(){
+  document.getElementById('welcome-screen').classList.add('hidden');
+}
+
+function showToast(message, kind='ok'){
+  const stack = document.getElementById('toast-stack');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind==='ok' ? '' : kind);
+  t.textContent = message;
+  stack.appendChild(t);
+  setTimeout(()=>{ t.remove(); }, 2800);
+}
+
+function tickClock(){
+  const el = document.getElementById('clock');
+  if(el) el.innerHTML = '<b>' + new Date().toLocaleTimeString() + '</b>';
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* =========================================================
+   TABS SWITCHING MANAGEMENT
+   ========================================================= */
+document.getElementById('tab-geo').addEventListener('click', ()=>switchMode('geo'));
+document.getElementById('tab-matrix').addEventListener('click', ()=>switchMode('matrix'));
+
+function switchMode(mode){
+  if(MODE === mode) return;
+  MODE = mode;
+  document.getElementById('tab-geo').classList.toggle('active', mode==='geo');
+  document.getElementById('tab-matrix').classList.toggle('active', mode==='matrix');
+  document.getElementById('geo-panels').classList.toggle('hidden', mode!=='geo');
+  document.getElementById('matrix-panels').classList.toggle('hidden', mode!=='matrix');
+  document.getElementById('map-col').classList.toggle('hidden', mode!=='geo');
+  document.getElementById('schematic-col').classList.toggle('hidden', mode!=='matrix');
+  document.getElementById('geo-setup-inputs').classList.toggle('hidden', mode!=='geo');
+
+  route = []; manifest = {}; acceptedList = []; rejectedList = []; cancelledList = [];
+  document.getElementById('feed').innerHTML = '<div class="empty-note">Live dispatch events will stream here</div>';
+
+  if(mode === 'geo'){
+    rebuildBaseRoute();
+    setTimeout(()=>{ map.resize(); renderAll(); }, 50);
+  } else {
+    route = [mxSource, mxDestination];
+    renderMatrixLocations();
+    renderMatrixTable();
+    renderMatrixRequestOptions();
+    renderAll();
+  }
+}
+
+/* =========================================================
+   GEOGRAPHY VIEWPORT CONSOLE ENGINE (MAPLIBRE 3D)
+   ========================================================= */
+function initMap(){
+  map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [76.6346, 27.5530],
+    zoom: 13,
+    pitch: 45,       
+    bearing: -5,    
+    antialias: true
+  });
+
+  map.on('load', () => {
+    map.addLayer({
+      'id': '3d-buildings',
+      'source': 'openmaptiles',
+      'source-layer': 'building',
+      'type': 'fill-extrusion',
+      'minzoom': 13,
+      'paint': {
+        'fill-extrusion-color': '#e2e8f0', 
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 13, 0, 13.05, ['get', 'render_height']],
+        'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 13, 0, 13.05, ['get', 'render_min_height']],
+        'fill-extrusion-opacity': 0.7
+      }
+    });
+
+    map.addSource('route-source', {
+      type: 'geojson',
+      data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
+    });
+
+    map.addLayer({
+      id: 'route-layer',
+      type: 'line',
+      source: 'route-source',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.85 }
+    });
+
+    // Seed defaults
+    document.getElementById('src-lat').value = 27.5530;
+    document.getElementById('src-lng').value = 76.6346;
+    document.getElementById('dst-lat').value = 27.5730;
+    document.getElementById('dst-lng').value = 76.6580;
+    applySystemConfiguration();
+  });
+
+  map.on('click', onMapClick);
+}
+
+function createDOMMarker(kind) {
+  const palette = {
+    source: { bg: '#d97706', border: '#d97706', text: '#ffffff', size: 28, label: 'S' },
+    destination: { bg: '#1e293b', border: '#1e293b', text: '#ffffff', size: 28, label: 'E' },
+    pickup: { bg: '#0d9488', border: '#0d9488', text: '#ffffff', size: 24, label: 'P' },
+    drop: { bg: '#2563eb', border: '#2563eb', text: '#ffffff', size: 24, label: 'D' },
+    pending: { bg: 'transparent', border: '#94a3b8', text: '#94a3b8', size: 22, label: '?' }
+  };
+  const p = palette[kind];
+  const el = document.createElement('div');
+  el.className = 'mapbox-div-icon';
+  el.innerHTML = `<div style="width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};border:2px solid ${p.border};display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-size:11px;font-weight:700;color:${p.text};box-shadow:0 3px 8px rgba(0,0,0,0.2);">${p.label}</div>`;
+  return el;
+}
+
+function onMapClick(e){
+  if(MODE !== 'geo' || !armedMode) return;
+  const latlng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+  applyPlacement(armedMode, latlng);
+  disarm();
+}
+
+function applyPlacement(kind, latlng){
+  if(kind === 'source'){
+    document.getElementById('src-lat').value = latlng.lat.toFixed(5);
+    document.getElementById('src-lng').value = latlng.lng.toFixed(5);
+  }
+  else if(kind === 'destination'){
+    document.getElementById('dst-lat').value = latlng.lat.toFixed(5);
+    document.getElementById('dst-lng').value = latlng.lng.toFixed(5);
+  }
+  else if(kind === 'pickup'){
+    pendingPickup = {id:mkId('P'), kind:'pickup', label:'P', ...latlng};
+    updateReqPreview();
+  }
+  else if(kind === 'drop'){
+    pendingDrop = {id:mkId('D'), kind:'drop', label:'D', ...latlng};
+    updateReqPreview();
+  }
+  renderMarkers();
+}
+
+function disarm(){ armedMode = null; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('armed')); }
+function arm(mode, btn){ const was = armedMode===mode; disarm(); if(!was){ armedMode=mode; btn.classList.add('armed'); } }
+
+document.getElementById('mode-source').addEventListener('click', e=>arm('source', e.currentTarget));
+document.getElementById('mode-destination').addEventListener('click', e=>arm('destination', e.currentTarget));
+document.getElementById('mode-pickup').addEventListener('click', e=>arm('pickup', e.currentTarget));
+document.getElementById('mode-drop').addEventListener('click', e=>arm('drop', e.currentTarget));
+
+// Unified Configuration Execution
+function applySystemConfiguration(){
+  const sLat = parseFloat(document.getElementById('src-lat').value);
+  const sLng = parseFloat(document.getElementById('src-lng').value);
+  const dLat = parseFloat(document.getElementById('dst-lat').value);
+  const dLng = parseFloat(document.getElementById('dst-lng').value);
+  capacity = parseInt(document.getElementById('capacity').value) || 3;
+
+  if(!isNaN(sLat) && !isNaN(sLng)) source = {id:'SOURCE', kind:'source', label:'S', lat:sLat, lng:sLng};
+  if(!isNaN(dLat) && !isNaN(dLng)) destination = {id:'DEST', kind:'destination', label:'E', lat:dLat, lng:dLng};
+  
+  rebuildBaseRoute();
+}
+document.getElementById('apply-anchors-btn').addEventListener('click', applySystemConfiguration);
+
+/* --- Geocoding Menu Event Hooks --- */
+document.getElementById('pu-place-select').addEventListener('change', (e)=>{
+  const key = e.target.value;
+  if(!key || !PLACES_COORDS[key]) return;
+  pendingPickup = {id:mkId('P'), kind:'pickup', label:'P', ...PLACES_COORDS[key]};
+  updateReqPreview();
+  renderMarkers();
+  map.flyTo({center:[pendingPickup.lng, pendingPickup.lat], zoom:14});
+});
+document.getElementById('dr-place-select').addEventListener('change', (e)=>{
+  const key = e.target.value;
+  if(!key || !PLACES_COORDS[key]) return;
+  pendingDrop = {id:mkId('D'), kind:'drop', label:'D', ...PLACES_COORDS[key]};
+  updateReqPreview();
+  renderMarkers();
+  map.flyTo({center:[pendingDrop.lng, pendingDrop.lat], zoom:14});
+});
+
+function rebuildBaseRoute(){
+  if(!source || !destination) return;
+  const intermediates = route.slice(1, Math.max(1, route.length-1)).filter(n=>n.kind!=='source' && n.kind!=='destination');
+  route = [source, ...intermediates, destination];
+  renderAll();
+}
+
+function updateReqPreview(){
+  const preview = document.getElementById('req-preview');
+  const submitBtn = document.getElementById('submit-req');
+  const pLabel = pendingPickup ? `(${pendingPickup.lat.toFixed(4)}, ${pendingPickup.lng.toFixed(4)})` : '—';
+  const dLabel = pendingDrop ? `(${pendingDrop.lat.toFixed(4)}, ${pendingDrop.lng.toFixed(4)})` : '—';
+  let baseDist = '—';
+  if(pendingPickup && pendingDrop) baseDist = (haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR).toFixed(2) + ' km';
+  preview.innerHTML = `pickup: <b>${pLabel}</b><br>dropoff: <b>${dLabel}</b><br>base distance: <b>${baseDist}</b>`;
+  submitBtn.disabled = !(pendingPickup && pendingDrop && source && destination);
+}
+
+document.getElementById('submit-req').addEventListener('click', ()=>{
+  if(!(pendingPickup && pendingDrop && source && destination)) return;
+  const baseDist = haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR;
+  const flex = parseFloat(document.getElementById('req-flex').value) || 0;
+  const req = { id:mkId('REQ'), pickup:{...pendingPickup}, drop:{...pendingDrop}, dist:baseDist, flex };
+  processRequest(req);
+  pendingPickup = null; pendingDrop = null;
+  document.getElementById('pu-place-select').value = "";
+  document.getElementById('dr-place-select').value = "";
+  updateReqPreview();
+});
+
+/* =========================================================
+   MATRIX MATRIX SCHEMATICS COMPONENT
+   ========================================================= */
+document.getElementById('mx-apply-anchors').addEventListener('click', ()=>{
+  const sId = document.getElementById('mx-src-id').value.trim() || 'S';
+  const dId = document.getElementById('mx-dst-id').value.trim() || 'E';
+  mxSource = {id:sId, kind:'source', label:sId};
+  mxDestination = {id:dId, kind:'destination', label:dId};
+  route = [mxSource, mxDestination];
+  manifest = {}; acceptedList = []; rejectedList = [];
+  renderMatrixTable();
+  renderMatrixRequestOptions();
+  renderAll();
+});
+
+document.getElementById('add-loc-btn').addEventListener('click', ()=>{
+  const idInput = document.getElementById('new-loc-id');
+  const id = idInput.value.trim();
+  if(!id) return;
+  if(mxLocations.find(l=>l.id===id) || id===mxSource.id || id===mxDestination.id) return alert('ID Conflict');
+  mxLocations.push({id});
+  idInput.value = '';
+  renderMatrixLocations(); renderMatrixTable(); renderMatrixRequestOptions();
+});
+
+function removeMxLocation(id){
+  mxLocations = mxLocations.filter(l=>l.id!==id);
+  Object.keys(matrixDist).forEach(k=>{ if(k.startsWith(id+'|') || k.endsWith('|'+id)) delete matrixDist[k]; });
+  renderMatrixLocations(); renderMatrixTable(); renderMatrixRequestOptions();
+}
+
+function renderMatrixLocations(){
+  const row = document.getElementById('loc-chip-row'); row.innerHTML = '';
+  mxLocations.forEach(loc=>{
+    const chip = document.createElement('div');
+    chip.className = 'loc-chip';
+    chip.innerHTML = `${loc.id} <button data-id="${loc.id}">×</button>`;
+    chip.querySelector('button').addEventListener('click', e=>removeMxLocation(e.target.dataset.id));
+    row.appendChild(chip);
+  });
+}
+
+function allMxNodes(){ return [mxSource, mxDestination, ...mxLocations.map(l=>({id:l.id, kind:'stop', label:l.id}))]; }
+
+function renderMatrixTable(){
+  const nodes = allMxNodes();
+  const wrap = document.getElementById('matrix-wrap');
+  let html = '<table class="matrix"><thead><tr><th></th>';
+  nodes.forEach(n=> html += `<th>${n.id}</th>`);
+  html += '</tr></thead><tbody>';
+  nodes.forEach(rowN=>{
+    html += `<tr><th>${rowN.id}</th>`;
+    nodes.forEach(colN=>{
+      if(rowN.id===colN.id){ html += `<td class="diag">0</td>`; }
+      else {
+        const val = getMatrixDist(rowN.id, colN.id);
+        html += `<td><input type="number" min="0" step="0.1" value="${val}" data-a="${rowN.id}" data-b="${colN.id}"></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      setMatrixDist(e.target.dataset.a, e.target.dataset.b, parseFloat(e.target.value)||0);
+      renderMatrixTable(); renderMatrixRequestPreview();
+    });
+  });
+}
+
+function renderMatrixRequestOptions(){
+  const nodes = allMxNodes();
+  ['mx-pickup','mx-drop'].forEach(selId=>{
+    const sel = document.getElementById(selId); const prev = sel.value;
+    sel.innerHTML = nodes.map(n=>`<option value="${n.id}">${n.id}</option>`).join('');
+    if(nodes.find(n=>n.id===prev)) sel.value = prev;
+  });
+  renderMatrixRequestPreview();
+}
+
+function renderMatrixRequestPreview(){
+  const p = document.getElementById('mx-pickup').value;
+  const d = document.getElementById('mx-drop').value;
+  const preview = document.getElementById('mx-req-preview');
+  if(!p || !d || p===d){ preview.innerHTML = 'base distance: <b>—</b>'; return; }
+  preview.innerHTML = `base distance: <b>${getMatrixDist(p,d).toFixed(2)} km</b>`;
+}
+document.getElementById('mx-pickup').addEventListener('change', renderMatrixRequestPreview);
+document.getElementById('mx-drop').addEventListener('change', renderMatrixRequestPreview);
+
+document.getElementById('mx-submit-req').addEventListener('click', ()=>{
+  const pId = document.getElementById('mx-pickup').value;
+  const dId = document.getElementById('mx-drop').value;
+  if(!pId || !dId || pId===dId) return;
+  const req = {
+    id: mkId('REQ'),
+    pickup:{id:pId, kind:'pickup', label:pId},
+    drop:{id:dId, kind:'drop', label:dId},
+    dist: getMatrixDist(pId, dId),
+    flex: parseFloat(document.getElementById('mx-req-flex').value) || 0
+  };
+  processRequest(req);
+});
+
+/* =========================================================
+   TRANSACTION PIPELINE & HISTORY STORAGE
+   ========================================================= */
+const REASON_TEXT = {
+  capacity: 'Exceeds Vehicle Capacity Bounds',
+  chronology: "Chronological Sequence Error",
+  flexibility: 'Detour Window Bound Breached',
+  'no-valid-slot': 'No Safe Insertion Coordinates'
+};
+
+function processRequest(req){
+  const result = insertRequestLive(route, manifest, req, capacity);
+  
+  // Package history element state entry
+  const historyEntry = {
+    id: req.id,
+    pickup: req.pickup.label || req.pickup.id,
+    drop: req.drop.label || req.drop.id,
+    accepted: result.accepted,
+    costIncrease: result.costIncrease,
+    reason: result.accepted ? '' : (REASON_TEXT[result.reason] || 'Constraint Infraction'),
+    timestamp: new Date().toLocaleTimeString()
+  };
+  requestHistory.push(historyEntry);
+  updateHistoryLedgerView();
+
+  logEvent(result, req);
+  if(result.accepted){
+    route = result.route; manifest = result.manifest; acceptedList.push(req);
+    showToast(`${req.id} Routing Locked`, 'ok');
+  } else {
+    rejectedList.push(req);
+    showToast(`${req.id} Dropped from Pipeline`, 'no');
+  }
+  document.getElementById('stat-time').textContent = result.elapsedMs.toFixed(2) + ' ms';
+  renderAll();
+}
+
+function cancelRequest(reqId){
+  const req = manifest[reqId]; if(!req) return;
+  const newManifest = Object.assign({}, manifest);
+  delete newManifest[reqId];
+  route = route.filter(node => node.id !== req.pickup.id && node.id !== req.drop.id);
+  manifest = newManifest;
+  acceptedList = acceptedList.filter(r => r.id !== reqId);
+  cancelledList.push(req);
+
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty-note')) feed.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'feed-item cancel';
+  item.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span>${reqId} <b>Cancelled Manually</b>`;
+  feed.prepend(item);
+
+  showToast(`${reqId} Evicted from Manifest`, 'cancel');
+  renderAll();
+}
+
+function logEvent(result, req){
+  const feed = document.getElementById('feed');
+  if(feed.querySelector('.empty-note')) feed.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'feed-item ' + (result.accepted ? 'ok':'no');
+  if(result.accepted){
+    item.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span><b>${req.id}</b> Accepted (Δ${result.costIncrease.toFixed(2)}km)`;
+  } else {
+    item.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span><b>${req.id}</b> Rejected: <span class="reason">${REASON_TEXT[result.reason]||'Infraction'}</span>`;
+  }
+  feed.prepend(item);
+}
+
+function updateHistoryLedgerView(){
+  const ledger = document.getElementById('history-ledger');
+  ledger.innerHTML = '';
+  if(requestHistory.length === 0){
+    ledger.innerHTML = '<div class="empty-note">No archival logs compiled yet.</div>';
+    return;
+  }
+  // Show last logs first
+  [...requestHistory].reverse().forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    const tagClass = h.accepted ? 'accepted' : 'rejected';
+    const statusText = h.accepted ? 'OK' : 'FAIL';
+    row.innerHTML = `
+      <span><b>${h.id}</b> (${h.pickup}→${h.drop})</span>
+      <span class="status-tag ${tagClass}">${statusText}</span>
+    `;
+    row.setAttribute('title', h.accepted ? `Added cost: ${h.costIncrease.toFixed(2)} km` : `Reason: ${h.reason}`);
+    ledger.appendChild(row);
+  });
+}
+
+/* =========================================================
+   UI GRAPHICS ENGINE DOM SYNC
+   ========================================================= */
+function renderMarkers(){
+  if(MODE !== 'geo' || !map || !map.isStyleLoaded()) return;
+  Object.values(markers).forEach(m => m.remove()); markers = {};
+
+  const place = (node, kind) => {
+    markers[node.id] = new maplibregl.Marker({ element: createDOMMarker(kind) })
+      .setLngLat([node.lng, node.lat]).addTo(map);
+  };
+
+  if(source) place(source, 'source');
+  if(destination) place(destination, 'destination');
+  route.forEach(node => {
+    if(node.kind === 'pickup') place(node, 'pickup');
+    if(node.kind === 'drop') place(node, 'drop');
+  });
+  if(pendingPickup) place(pendingPickup, 'pending');
+  if(pendingDrop) place(pendingDrop, 'pending');
+}
+
+function renderTripline(check){
+  const tripline = document.getElementById('tripline'); tripline.innerHTML = '';
+  if(route.length < 2) return;
+  const maxOcc = Math.max(1, ...check.passengerCounts);
+  route.forEach((node,i)=>{
+    const isTerminal = i===0 || i===route.length-1;
+    const occ = check.passengerCounts[i] ?? 0;
+    const stop = document.createElement('div');
+    stop.className = 'stop' + (isTerminal?' terminal':'');
+    stop.innerHTML = `
+      <div class="occ-bar" style="height:${6+(occ/maxOcc)*34}px"></div>
+      <div class="occ-num">${occ}</div><div class="rail"></div><div class="node"></div>
+      <div class="stop-label">${node.label || node.id}</div>
+      <div class="stop-sub">${i===0?'START':(i===route.length-1?'END':node.kind)}</div>`;
+    tripline.appendChild(stop);
+  });
+}
+
+function renderRouteAndStats(){
+  const check = route.length > 1 ? validateDynamicConstraints(route, manifest, capacity) : {passengerCounts:[]};
+  const dist = route.length > 1 ? computeRouteDistance(route) : 0;
+  
+  document.getElementById('stat-dist').textContent = dist.toFixed(2) + ' km';
+  document.getElementById('stat-accepted').textContent = acceptedList.length;
+  document.getElementById('stat-rejected').textContent = rejectedList.length;
+
+  const list = document.getElementById('route-list'); list.innerHTML = '';
+  if(route.length < 2){
+    list.innerHTML = '<li class="empty-note">Awaiting node configurations...</li>';
+  } else {
+    route.forEach((node,i)=>{
+      const occ = check.passengerCounts[i] ?? 0;
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${i+1}. ${node.label||node.id} <span class="kind-tag">${node.kind}</span></span><span class="occ">${occ} 🧍</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  if(MODE === 'geo' && map && map.isStyleLoaded()){
+    if(route.length > 1){
+      const coords = route.map(n => [n.lng, n.lat]);
+      map.getSource('route-source').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+      const bounds = coords.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]));
+      map.fitBounds(bounds, { padding: 60, duration: 1000, pitch: 40 });
+    } else {
+      map.getSource('route-source').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+    }
+  } else {
+    renderTripline(check);
+  }
+}
+
+function renderManifestList(){
+  const list = document.getElementById('manifest-list'); list.innerHTML = '';
+  const active = Object.values(manifest);
+  if(active.length === 0){
+    list.innerHTML = '<li class="empty-note">No active manifest tracks</li>'; return;
+  }
+  active.forEach(req=>{
+    const li = document.createElement('li'); li.className = 'manifest-item';
+    li.innerHTML = `
+      <span><span class="mi-label">${req.id}</span> ${req.pickup.label||req.pickup.id}→${req.drop.label||req.drop.id}
+      <div class="mi-sub">${req.dist.toFixed(1)}km base · Window Δ${req.flex}</div></span>
+      <button class="cancel-btn" data-id="${req.id}">×</button>
+    `;
+    li.querySelector('.cancel-btn').addEventListener('click', e=>cancelRequest(e.currentTarget.dataset.id));
+    list.appendChild(li);
+  });
+}
+
+function renderAll(){ renderMarkers(); renderRouteAndStats(); renderManifestList(); }
+
+/* =========================================================
+   SIMULATION SIMULATOR ENGINE
+   ========================================================= */
+function randomNearby(center, radiusKm){
+  const r = radiusKm / 111; const angle = Math.random()*Math.PI*2, rad = Math.random()*r;
+  return {lat: center.lat + rad*Math.sin(angle), lng: center.lng + rad*Math.sin(angle)};
+}
+function spawnRandomRequest(){
+  if(!source || !destination) return;
+  const center = {lat:(source.lat+destination.lat)/2, lng:(source.lng+destination.lng)/2};
+  const pCoord = randomNearby(center, 1.5); const dCoord = randomNearby(center, 1.5);
+  processRequest({
+    id: mkId('REQ'),
+    pickup: {id:mkId('P'), kind:'pickup', label:'P', ...pCoord},
+    drop: {id:mkId('D'), kind:'drop', label:'D', ...dCoord},
+    dist: haversineKm(pCoord, dCoord)*ROAD_FACTOR, flex: 1.5
+  });
+}
+document.getElementById('sim-toggle').addEventListener('click', (e)=>{
+  simRunning = !simRunning;
+  const btn=e.target, dot=document.getElementById('live-dot'), text=document.getElementById('live-text');
+  if(simRunning){
+    if(!source || !destination) { simRunning=false; return alert('Missing Hub Coords'); }
+    btn.textContent='⏸ Stop'; btn.classList.add('active'); dot.classList.add('on'); text.textContent='live';
+    simTimer = setInterval(spawnRandomRequest, 2500);
+  } else {
+    btn.textContent='▶ Start'; btn.classList.remove('active'); dot.classList.remove('on'); text.textContent='idle';
+    clearInterval(simTimer);
+  }
+});
+document.getElementById('reset-btn').addEventListener('click', ()=>{
+  simRunning=false; clearInterval(simTimer);
+  document.getElementById('sim-toggle').textContent='▶ Start';
+  document.getElementById('sim-toggle').classList.remove('active');
+  document.getElementById('live-dot').classList.remove('on');
+  document.getElementById('live-text').textContent='idle';
+  manifest={}; acceptedList=[]; rejectedList=[]; cancelledList=[]; pendingPickup=null; pendingDrop=null;
+  requestHistory = []; updateHistoryLedgerView();
+  document.getElementById('feed').innerHTML = '<div class="empty-note">Awaiting dynamic inputs...</div>';
+  applySystemConfiguration();
+});
+
+/* =========================================================
+   BOOTSTRAP INITIALIZATION
+   ========================================================= */
+initMap();
+</script>
 </body>
 </html>
