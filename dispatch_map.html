@@ -1,1098 +1,400 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>OmniRoute 3D — Intelligent Fleet Dispatch Console</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700&family=JetBrains+Mono:wght=400;500;600&display=swap" rel="stylesheet">
-<!-- MapLibre GL JS for WebGL-based 3D Rendering -->
-<link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
-<script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
-<style>
-  :root {
-    --bg-app: #f1f5f9;           
-    --bg-card: #ffffff;          
-    --border-light: #e2e8f0;     
-    --border-hover: #cbd5e1;     
-    --text-primary: #0f172a;     
-    --text-secondary: #475569;   
-    --text-muted: #94a3b8;       
-    
-    --primary: #2563eb;          
-    --primary-light: #eff6ff;    
-    --success: #0d9488;          
-    --success-light: #f0fdfa;
-    --danger: #dc2626;           
-    --danger-light: #fef2f2;
-    --warning: #d97706;          
-    --warning-light: #fef3c7;
-    --accent: #4f46e5;           
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration & Request Setup</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --panel-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --primary-color: #007bff;
+            --text-color: #333;
+        }
 
-    --font-sans: 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-  }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
-  
-  .mono { font-family: var(--font-mono); }
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
 
-  /* Welcome Screen Overlay */
-  #welcome-screen {
-    position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    background: radial-gradient(circle at top right, #eff6ff 0%, #f1f5f9 100%);
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.4s ease;
-  }
-  #welcome-screen.hidden {
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-  }
-  .welcome-card {
-    text-align: center;
-    max-width: 540px;
-    padding: 40px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
-  }
-  .welcome-card h1 { font-size: 32px; font-weight: 800; color: var(--text-primary); margin: 0 0 12px 0; }
-  .welcome-card h1 span { color: var(--primary); }
-  .welcome-card p { font-size: 15px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 32px 0; }
-  .enter-btn {
-    background: var(--primary); color: #ffffff; border: none; padding: 16px 36px;
-    font-size: 15px; font-weight: 600; border-radius: 12px; cursor: pointer;
-    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.3); transition: all 0.2s ease;
-  }
-  .enter-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+        /* Split Screen Container */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
 
-  /* Dynamic Modal Sub-windows */
-  .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.3); backdrop-filter: blur(4px);
-    z-index: 2000; display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-  }
-  .modal-overlay.active { opacity: 1; pointer-events: auto; }
-  .modal-window {
-    background: var(--bg-card); border: 1px solid var(--border-light);
-    border-radius: 16px; width: 100%; max-width: 460px; padding: 24px;
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); transform: scale(0.95); transition: transform 0.3s ease;
-  }
-  .modal-overlay.active .modal-window { transform: scale(1); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .modal-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
-  .close-modal-btn { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; }
-  .close-modal-btn:hover { color: var(--danger); }
+        /* Left Section (Default to 65% wider view) */
+        .left-panel {
+            width: 65%;
+            min-width: 40%;
+            max-width: 85%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
 
-  /* Search Engine Autocomplete Box styling */
-  .search-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
-  .suggestions-box {
-    position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card);
-    border: 1px solid var(--border-light); border-radius: 8px; max-height: 160px;
-    overflow-y: auto; z-index: 3000; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); display: none;
-  }
-  .suggestions-box.active { display: block; }
-  .suggestion-item { padding: 8px 12px; font-size: 12px; cursor: pointer; transition: background 0.2s; }
-  .suggestion-item:hover { background: var(--primary-light); color: var(--primary); }
-  .error-text { color: var(--danger); font-size: 11px; font-weight: 500; margin-top: 4px; display: none; }
+        /* Adjustable Resizer Line */
+        .resizer {
+            width: 6px;
+            cursor: col-resize;
+            background-color: var(--border-color);
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
 
-  /* App Layout */
-  .app {
-    display: grid;
-    grid-template-columns: 360px 1fr 340px;
-    grid-template-rows: 70px 1fr;
-    height: 100vh;
-  }
+        .resizer:hover, .resizer:active {
+            background-color: var(--primary-color);
+        }
 
-  /* Top Bar */
-  .topbar {
-    grid-column: 1 / 4; display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; border-bottom: 1px solid var(--border-light); background: var(--bg-card); z-index: 100;
-  }
-  .topbar h1 { font-size: 18px; font-weight: 700; margin: 0; color: var(--text-primary); }
-  .topbar h1 .tag { color: var(--primary); }
-  .topbar .sub { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+        /* Right Map Section (Lil smaller / adjustable) */
+        .right-panel {
+            flex: 1;
+            height: 100%;
+            background-color: #e5e9f0;
+            position: relative;
+        }
 
-  .clock {
-    font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);
-    background: var(--bg-app); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-light);
-  }
+        .map-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-weight: 600;
+            background: radial-gradient(circle, #e2e8f0 10%, #cbd5e1 100%);
+        }
 
-  .mode-tabs { display: flex; gap: 4px; background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 10px; padding: 4px; }
-  .mode-tab {
-    background: none; border: none; color: var(--text-secondary); font-family: var(--font-sans);
-    font-weight: 500; font-size: 12px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-  }
-  .mode-tab.active { background: var(--bg-card); color: var(--primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        /* Collapsible Card Component */
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            overflow: hidden;
+            background: #fff;
+        }
 
-  .exit-btn {
-    background: var(--bg-app); border: 1px solid var(--border-light); color: var(--text-secondary);
-    font-family: var(--font-sans); font-size: 12px; font-weight: 600; padding: 6px 16px;
-    border-radius: 20px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
-  }
-  .exit-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+        .card-header {
+            padding: 15px 20px;
+            background-color: #fafafa;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-  /* Sidebars */
-  .sidebar, .rightbar { overflow-y: auto; padding: 24px; background: var(--bg-app); display: flex; flex-direction: column; gap: 16px; }
-  .sidebar { border-right: 1px solid var(--border-light); }
-  .rightbar { border-left: 1px solid var(--border-light); }
+        .card-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
 
-  /* Action Trigger Buttons */
-  .action-trigger-btn {
-    width: 100%; background: var(--bg-card); border: 1px solid var(--border-light);
-    color: var(--text-primary); padding: 12px; font-size: 13px; font-weight: 600;
-    border-radius: 10px; text-align: left; display: flex; align-items: center; justify-content: space-between;
-    cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s ease;
-  }
-  .action-trigger-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+            transition: transform 0.2s;
+            padding: 5px 10px;
+        }
 
-  /* Control Panels */
-  .panel {
-    background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 18px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  }
-  .panel h2 {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);
-    margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px; font-weight: 600;
-  }
-  .panel h2::before { content: ''; width: 6px; height: 12px; background: var(--primary); border-radius: 2px; }
+        .toggle-btn.collapsed {
+            transform: rotate(180deg);
+        }
 
-  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .mode-btn {
-    background: var(--bg-app); border: 1px solid var(--border-light); color: var(--text-secondary);
-    padding: 8px; border-radius: 8px; font-family: var(--font-sans); font-size: 11px; font-weight: 500;
-    cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 4px;
-  }
-  .mode-btn.armed { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
-  .mode-btn.source.armed, .mode-btn.destination.armed { background: var(--warning-light); border-color: var(--warning); color: #92400e; }
-  
-  .hint { font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px; }
+        .card-body {
+            padding: 20px;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            max-height: 1000px; /* Large enough to accommodate content */
+            overflow: hidden;
+        }
 
-  .coord-row { display: flex; gap: 6px; margin-bottom: 6px; }
-  .coord-row input { flex: 1; min-width: 0; padding: 6px 8px !important; font-size: 12px !important; }
+        .card.is-collapsed .card-body {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-top: none;
+        }
 
-  .req-preview {
-    background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px;
-    padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;
-  }
-  .req-preview b { color: var(--text-primary); }
-  
-  .field-row { display: flex; gap: 10px; margin-bottom: 10px; }
-  .field-row > div { flex: 1; }
-  label.field-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: block; margin-bottom: 4px; }
-  
-  input[type=text], input[type=number], select {
-    width: 100%; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-primary);
-    font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; border-radius: 6px; outline: none; transition: all 0.2s;
-  }
-  input[type=text]:focus, input[type=number]:focus, select:focus { border-color: var(--primary); }
+        /* Form Layouts */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
 
-  .small-btn {
-    background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-secondary);
-    padding: 6px 10px; border-radius: 6px; font-family: var(--font-sans); font-weight: 500; font-size: 11px; cursor: pointer;
-  }
-  .small-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
 
-  .submit-btn {
-    width: 100%; background: var(--primary); color: #ffffff; border: none; padding: 10px;
-    font-family: var(--font-sans); font-weight: 600; font-size: 12px; border-radius: 8px; cursor: pointer;
-  }
-  .submit-btn:disabled { background: var(--border-light); color: var(--text-muted); cursor: not-allowed; }
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+        }
 
-  .sim-row { display: flex; gap: 8px; }
-  .sim-btn {
-    flex: 1; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-primary);
-    padding: 8px; border-radius: 8px; font-family: var(--font-sans); font-size: 11px; font-weight: 500; cursor: pointer;
-  }
-  .sim-btn.active { border-color: var(--success); color: var(--success); background: var(--success-light); font-weight: 600; }
+        .form-group input, .form-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+        }
 
-  /* Map and Schematic viewports */
-  .map-col { position: relative; border-right: 1px solid var(--border-light); background: #ffffff; }
-  #map { width: 100%; height: 100%; }
-  
-  .map-overlay-tips {
-    position: absolute; bottom: 24px; left: 24px; background: rgba(255, 255, 255, 0.9);
-    padding: 10px 14px; border-radius: 8px; font-size: 10px; color: var(--text-secondary);
-    border: 1px solid var(--border-light); z-index: 10; backdrop-filter: blur(4px); pointer-events: none;
-  }
+        /* Table Styling for Multiple Requests */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 10px;
+        }
 
-  .schematic-col { display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; background: var(--bg-app); }
-  .tripline-wrap { width: 100%; max-width: 800px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 40px; }
-  .tripline { position: relative; display: flex; align-items: flex-end; min-width: min-content; padding-top: 26px; }
-  .stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 90px; flex: 1; }
-  .stop .rail { position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--primary); z-index: 0; }
-  .stop:first-child .rail { left: 50%; width: 50%; }
-  .stop:last-child .rail { width: 50%; }
-  .stop .node { width: 14px; height: 14px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--primary); z-index: 1; margin-bottom: 8px; }
-  .stop.terminal .node { background: var(--primary); width: 18px; height: 18px; }
-  .stop .occ-bar { width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; margin-bottom: 6px; }
-  .stop .occ-num { font-family: var(--font-mono); font-size: 10px; color: var(--accent); margin-top: -4px; margin-bottom: 4px; font-weight: 600; }
-  .stop .stop-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); font-weight: 500; }
-  .stop .stop-sub { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; margin-top: 2px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
 
-  .loc-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .loc-chip {
-    display: flex; align-items: center; gap: 6px; background: var(--bg-app); border: 1px solid var(--border-light);
-    border-radius: 20px; padding: 4px 10px 4px 12px; font-family: var(--font-mono); font-size: 11px;
-  }
-  .loc-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
-  .add-loc-row { display: flex; gap: 8px; }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
 
-  .matrix-wrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; }
-  table.matrix { border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; width: 100%; background: var(--bg-card); }
-  table.matrix th, table.matrix td { padding: 8px 10px; text-align: center; border: 1px solid var(--border-light); }
-  table.matrix th { color: var(--text-secondary); background: var(--bg-app); font-weight: 600; }
-  table.matrix td.diag { color: var(--text-muted); background: var(--bg-app); }
-  table.matrix td input { width: 50px; padding: 4px; text-align: center; border: 1px solid transparent; background: transparent; }
-  table.matrix td input:focus { border-color: var(--primary); background: var(--bg-card); outline: none; }
+        th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+        }
 
-  /* Stats and Sidebar Panels */
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat-box { background: var(--bg-app); border: 1px solid var(--border-light); border-radius: 8px; padding: 10px; }
-  .stat-box .stat-label { font-size: 8px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
-  .stat-box .stat-value { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text-primary); }
-  .stat-box.accent .stat-value { color: var(--primary); }
+        .table-input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
 
-  .route-list, .manifest-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 11px; }
-  .route-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-light); }
-  .route-list .occ { color: var(--accent); font-weight: 600; }
-  .route-list .kind-tag { font-size: 8px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-left: 4px; }
+        .map-pin-btn {
+            background-color: #f1f5f9;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
 
-  .manifest-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
-  .manifest-item {
-    display: flex; justify-content: space-between; align-items: center; padding: 8px 10px;
-    background: var(--bg-app); border-left: 3px solid var(--primary); border-radius: 6px; border: 1px solid var(--border-light);
-  }
-  .manifest-item .mi-label { color: var(--text-primary); font-weight: 600; }
-  .manifest-item .mi-sub { color: var(--text-secondary); font-size: 9px; }
-  
-  .cancel-btn {
-    background: #ffffff; border: 1px solid var(--border-light); color: var(--danger);
-    width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
+        .map-pin-btn:hover {
+            background-color: #e2e8f0;
+        }
 
-  /* Event Feed Logs */
-  .feed, .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; font-family: var(--font-mono); font-size: 10px; }
-  .feed-item { padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--border-light); background: var(--bg-app); }
-  .feed-item.ok { border-left-color: var(--success); background: var(--success-light); }
-  .feed-item.no { border-left-color: var(--danger); background: var(--danger-light); }
-  .feed-item.cancel { border-left-color: var(--accent); background: #f5f3ff; }
-  .feed-item .ts { color: var(--text-muted); margin-right: 4px; }
-  .feed-item .reason { color: var(--danger); }
-  .empty-note { color: var(--text-muted); font-size: 11px; font-style: italic; }
-  
-  .history-item { display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid var(--border-light); }
-  .history-item .status-tag { font-weight: 600; text-transform: uppercase; font-size: 9px; }
-  .history-item .status-tag.accepted { color: var(--success); }
-  .history-item .status-tag.rejected { color: var(--danger); }
-  
-  .hidden { display: none !important; }
-  .mapbox-div-icon { background: transparent; border: none; }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
 
-  #toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; }
-  .toast {
-    font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-primary);
-    background: var(--bg-card); border: 1px solid var(--border-light); border-left: 4px solid var(--success);
-    padding: 10px 16px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-  }
-  .toast.no { border-left-color: var(--danger); }
-  .toast.cancel { border-left-color: var(--accent); }
-</style>
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
 
-<!-- WELCOME INTRO SPLASH PAGE -->
-<div id="welcome-screen">
-  <div class="welcome-card">
-    <h1>Welcome to <span>OmniRoute 3D</span></h1>
-    <p>An advanced dynamic fleet routing engine. Real-time scheduling, WebGL building extrusions, adaptive detour window checks, and live telemetry tracking aggregated into a unified operations center.</p>
-    <button class="enter-btn" onclick="enterApp()">Enter Ride Sharing Workspace →</button>
-  </div>
-</div>
-
-<!-- SUB-WINDOW MODAL: SYSTEM CONFIGURATION -->
-<div class="modal-overlay" id="modal-config">
-  <div class="modal-window">
-    <div class="modal-header">
-      <h3>⚙️ System Configuration Setup</h3>
-      <button class="close-modal-btn" onclick="closeModal('modal-config')">×</button>
-    </div>
-    <div class="hint">Define your operational terminal hubs and individual carrier constraints.</div>
-    <div class="field-row">
-      <div>
-        <label class="field-label">Vehicle Capacity</label>
-        <input type="number" id="capacity" value="2" min="1">
-      </div>
-    </div>
-    <div class="mode-grid">
-      <button class="mode-btn source" id="mode-source">📍 Arm Source</button>
-      <button class="mode-btn destination" id="mode-destination">🏁 Arm Dest</button>
-    </div>
-    <div class="coord-row">
-      <input type="number" step="0.00001" id="src-lat" placeholder="Src Lat" value="27.55275">
-      <input type="number" step="0.00001" id="src-lng" placeholder="Src Lng" value="76.63460">
-    </div>
-    <div class="coord-row" style="margin-bottom: 16px;">
-      <input type="number" step="0.00001" id="dst-lat" placeholder="Dest Lat" value="27.54911">
-      <input type="number" step="0.00001" id="dst-lng" placeholder="Dest Lng" value="76.60856">
-    </div>
-    <button class="submit-btn" id="apply-anchors-btn">Apply & Update Configuration Topology</button>
-  </div>
-</div>
-
-<!-- SUB-WINDOW MODAL: CREATE NEW REQUEST -->
-<div class="modal-overlay" id="modal-request">
-  <div class="modal-window">
-    <div class="modal-header">
-      <h3>➕ Create New Transit Request</h3>
-      <button class="close-modal-btn" onclick="closeModal('modal-request')">×</button>
-    </div>
-    <div class="hint">Search any location name below. Click the map viewport directly at any time to fine-tune coordinates.</div>
-    
-    <!-- Pickup Search Engine Selection -->
-    <label class="field-label">Pickup Hub Location</label>
-    <div class="search-wrapper">
-      <input type="text" id="pu-search" placeholder="Type name (e.g., IIT Dharwad, Railway Junction, Alwar)...">
-      <div class="suggestions-box" id="pu-suggest"></div>
-      <div class="error-text" id="pu-error">⚠️ No such location found on map</div>
-    </div>
-    <div class="mode-grid"><button class="mode-btn pickup" id="mode-pickup">🟢 Set Pickup via Map Click</button></div>
-
-    <!-- Dropoff Search Engine Selection -->
-    <label class="field-label">Dropoff Hub Location</label>
-    <div class="search-wrapper">
-      <input type="text" id="dr-search" placeholder="Type name (e.g., SDM College, Vidyagiri, Alwar Hub)...">
-      <div class="suggestions-box" id="dr-suggest"></div>
-      <div class="error-text" id="dr-error">⚠️ No such location found on map</div>
-    </div>
-    <div class="mode-grid"><button class="mode-btn drop" id="mode-drop">🔷 Set Dropoff via Map Click</button></div>
-
-    <div class="req-preview" id="req-preview">pickup: <b>—</b><br>dropoff: <b>—</b><br>base distance: <b>—</b></div>
-    <div class="field-row">
-      <div><label class="field-label">Flexibility Δ (km)</label><input type="number" id="req-flex" value="1.5" min="0" step="0.5"></div>
-    </div>
-    <button class="submit-btn" id="submit-req" disabled>Submit Live Request to Fleet →</button>
-  </div>
-</div>
-
-<div class="app">
-
-  <!-- TOP BAR -->
-  <div class="topbar">
-    <h1>OmniRoute <span class="tag">3D</span> <span class="sub">— Operations Dashboard</span></h1>
-    <div class="mode-tabs">
-      <button class="mode-tab active" id="tab-geo">🗺️ Map & Geocoding</button>
-      <button class="mode-tab" id="tab-matrix">🔢 Distance Matrix</button>
-    </div>
-    <div style="display:flex; align-items:center; gap:16px;">
-      <div class="clock" id="clock">--:--:--</div>
-      <button class="exit-btn" onclick="exitWorkspace()">🚪 Exit Workspace</button>
-    </div>
-  </div>
-
-  <!-- LEFT SIDEBAR -->
-  <div class="sidebar">
-    
-    <!-- MODAL TRIGGER BUTTONS REPLACE BULKY SECTIONS -->
-    <div id="geo-trigger-panel" style="display: flex; flex-direction: column; gap: 12px;">
-      <button class="action-trigger-btn" onclick="openModal('modal-config')">
-        <span>⚙️ System Configuration</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Adjust Hubs & Cap →</span>
-      </button>
-      
-      <button class="action-trigger-btn" onclick="openModal('modal-request')">
-        <span>➕ Create New Request</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Geocode Locations →</span>
-      </button>
-    </div>
-
-    <!-- GEO GRAPH INTERFACE PANELS -->
-    <div id="geo-panels">
-      <div class="panel">
-        <h2>Live Simulation Suite</h2>
-        <div class="hint">Stress test the engine inside active boundaries.</div>
-        <div class="sim-row">
-          <button class="sim-btn" id="sim-toggle">▶ Start Sim</button>
-          <button class="sim-btn" id="reset-btn" style="color:var(--danger)">⟲ Reset All</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MATRIX INTERFACE PANELS -->
-    <div id="matrix-panels" class="hidden">
-      <div class="panel">
-        <h2>Matrix Settings</h2>
-        <div class="field-row">
-          <div><label class="field-label">Source Node ID</label><input type="text" id="mx-src-id" value="S"></div>
-          <div><label class="field-label">Dest Node ID</label><input type="text" id="mx-dst-id" value="E"></div>
-        </div>
-        <button class="small-btn" id="mx-apply-anchors" style="width:100%;">Update Matrix Labels</button>
-      </div>
-      <div class="panel">
-        <h2>Abstract Locations</h2>
-        <div class="loc-chip-row" id="loc-chip-row"></div>
-        <div class="add-loc-row">
-          <input type="text" id="new-loc-id" placeholder="Node Key (e.g. P1)">
-          <button class="small-btn" id="add-loc-btn">+ Add</button>
-        </div>
-      </div>
-      <div class="panel">
-        <h2>Distance Matrix Input (km)</h2>
-        <div class="matrix-wrap" id="matrix-wrap"></div>
-      </div>
-      <div class="panel">
-        <h2>New Matrix Entry</h2>
-        <div class="field-row">
-          <div><label class="field-label">Pickup</label><select id="mx-pickup"></select></div>
-          <div><label class="field-label">Dropoff</label><select id="mx-drop"></select></div>
-        </div>
-        <div class="req-preview" id="mx-req-preview">base distance: <b>—</b></div>
-        <div class="field-row">
-          <div><label class="field-label">Flexibility Δ</label><input type="number" id="mx-req-flex" value="1" min="0" step="0.5"></div>
-        </div>
-        <button class="submit-btn" id="mx-submit-req">Submit Matrix Request →</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CENTER MAP/SCHEMATIC VIEWER -->
-  <div class="map-col" id="map-col">
-    <div id="map"></div>
-    <div class="map-overlay-tips">
-      🖱️ <b>3D Viewport Controls:</b> Hold <b>Right Click / Ctrl + Drag</b> to tilt camera pitch, rotate bearing, and view structures.
-    </div>
-  </div>
-  <div class="schematic-col hidden" id="schematic-col">
-    <div class="tripline-wrap"><div class="tripline" id="tripline"></div></div>
-  </div>
-
-  <!-- RIGHT SIDEBAR -->
-  <div class="rightbar">
-    <div class="panel">
-      <h2>Telemetry Diagnostics</h2>
-      <div class="stats-grid">
-        <div class="stat-box accent"><div class="stat-label">Total Dist</div><div class="stat-value" id="stat-dist">0.0 km</div></div>
-        <div class="stat-box"><div class="stat-label">Compute Time</div><div class="stat-value" id="stat-time">— ms</div></div>
-        <div class="stat-box"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">0</div></div>
-        <div class="stat-box"><div class="stat-label">Rejected</div><div class="stat-value" id="stat-rejected">0</div></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Active Core Manifest</h2>
-      <ul class="manifest-list" id="manifest-list"><li class="empty-note">No active transit schedules</li></ul>
-    </div>
-    <div class="panel">
-      <h2>Calculated Routing Steps</h2>
-      <ul class="route-list" id="route-list"><li class="empty-note">Establish system layout topology</li></ul>
-    </div>
-    <div class="panel">
-      <h2>System Event Feed</h2>
-      <div class="feed" id="feed"><div class="empty-note">Awaiting dynamic inputs...</div></div>
-    </div>
-    <div class="panel">
-      <h2>Request History Ledger</h2>
-      <div class="history-list" id="history-ledger"><div class="empty-note">No archival logs compiled yet.</div></div>
-    </div>
-  </div>
-
-</div>
-
-<div id="toast-stack"></div>
-
-<script>
-/* =========================================================
-   ROUTING ENGINE
-   ========================================================= */
-const EPSILON = 1e-6;
-
-// Extensive location database to accommodate autocomplete suggestions dynamically
-const GLOBAL_LOCATIONS = [
-  { name: "IIT Dharwad Campus", lat: 27.56150, lng: 76.62100 },
-  { name: "Dharwad Railway Junction", lat: 27.55300, lng: 76.63460 },
-  { name: "SDM College Area", lat: 27.54200, lng: 76.64100 },
-  { name: "Vidyagiri District", lat: 27.55100, lng: 76.66200 },
-  { name: "Hubli Road Entry", lat: 27.57100, lng: 76.65500 },
-  { name: "Alwar Central Market", lat: 27.55275, lng: 76.63460 },
-  { name: "Alwar Junction Station", lat: 27.54911, lng: 76.60856 },
-  { name: "Matsya Industrial Area", lat: 27.61200, lng: 76.65200 },
-  { name: "Vijay Nagar Terminal", lat: 27.57500, lng: 76.62100 }
-];
-
-function haversineKm(a, b){
-  const R = 6371;
-  const dLat = (b.lat - a.lat) * Math.PI/180;
-  const dLng = (b.lng - a.lng) * Math.PI/180;
-  const lat1 = a.lat * Math.PI/180, lat2 = b.lat * Math.PI/180;
-  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-const ROAD_FACTOR = 1.3;
-function geoDistFn(a, b){ return a.id === b.id ? 0 : haversineKm(a,b) * ROAD_FACTOR; }
-
-let matrixDist = {}; 
-function mKey(a,b){ return a+'|'+b; }
-function matrixDistFn(a, b){
-  if(a.id === b.id) return 0;
-  return matrixDist[mKey(a.id,b.id)] ?? matrixDist[mKey(b.id,a.id)] ?? 0;
-}
-function setMatrixDist(a,b,val){ matrixDist[mKey(a,b)] = val; matrixDist[mKey(b,a)] = val; }
-function getMatrixDist(a,b){ return matrixDist[mKey(a,b)] ?? matrixDist[mKey(b,a)] ?? 0; }
-function currentDistFn(a,b){ return MODE === 'geo' ? geoDistFn(a,b) : matrixDistFn(a,b); }
-
-function computeRouteDistance(route){
-  let total = 0;
-  for(let k=1;k<route.length;k++) total += currentDistFn(route[k-1], route[k]);
-  return total;
-}
-
-function validateDynamicConstraints(route, manifest, capacity){
-  let currentPassengers = 0;
-  const passengerCounts = [];
-  const locationIndices = {};
-  for(let idx=0; idx<route.length; idx++) locationIndices[route[idx].id] = idx;
-
-  const delta = {};
-  for(const req of Object.values(manifest)){
-    delta[req.pickup.id] = (delta[req.pickup.id] || 0) + 1;
-    delta[req.drop.id] = (delta[req.drop.id] || 0) - 1;
-  }
-
-  for(let idx=0; idx<route.length; idx++){
-    const node = route[idx];
-    currentPassengers += delta[node.id] || 0;
-    passengerCounts.push(currentPassengers);
-    if(currentPassengers > capacity) return {valid:false, cost:Infinity, passengerCounts:[], reason:'capacity'};
-  }
-
-  const cumulativeDist = new Array(route.length).fill(0);
-  for(let k=1;k<route.length;k++) cumulativeDist[k] = cumulativeDist[k-1] + currentDistFn(route[k-1], route[k]);
-
-  for(const req of Object.values(manifest)){
-    const pPos = locationIndices[req.pickup.id] ?? -1;
-    const dPos = locationIndices[req.drop.id] ?? -1;
-    if(pPos === -1 || dPos === -1 || pPos >= dPos) return {valid:false, cost:Infinity, passengerCounts:[], reason:'chronology'};
-    if((cumulativeDist[dPos] - cumulativeDist[pPos]) > (req.dist + req.flex + EPSILON)) return {valid:false, cost:Infinity, passengerCounts:[], reason:'flexibility'};
-  }
-  return {valid:true, cost:cumulativeDist[route.length-1], passengerCounts};
-}
-
-function insertRequestLive(route, manifest, newRequest, capacity){
-  const startTime = performance.now();
-  const baseRouteCost = computeRouteDistance(route);
-  const startSlot = 1;
-  const endSlot = route.length - 1;
-
-  const testManifest = Object.assign({}, manifest);
-  testManifest[newRequest.id] = newRequest;
-
-  let bestRoute = null;
-  let minCostIncrease = Infinity;
-  let lastFailReason = null;
-
-  for(let i=startSlot; i<=endSlot; i++){
-    for(let j=i; j<=endSlot; j++){
-      const candidateRoute = [...route.slice(0,i), newRequest.pickup, ...route.slice(i,j), newRequest.drop, ...route.slice(j)];
-      const check = validateDynamicConstraints(candidateRoute, testManifest, capacity);
-      if(check.valid){
-        const width = check.cost - baseRouteCost;
-        if(width < minCostIncrease){ minCostIncrease = width; bestRoute = candidateRoute; }
-      } else { lastFailReason = check.reason; }
-    }
-  }
-  const elapsedMs = performance.now() - startTime;
-  if(bestRoute) return {accepted:true, route:bestRoute, manifest:testManifest, costIncrease:minCostIncrease, elapsedMs};
-  return {accepted:false, route, manifest, costIncrease:null, elapsedMs, reason: lastFailReason || 'no-valid-slot'};
-}
-
-/* =========================================================
-   APPLICATION ARCHITECTURE STATE
-   ========================================================= */
-let MODE = 'geo'; 
-let capacity = 2;
-let source = null, destination = null;
-let route = [];
-let manifest = {};
-let requestHistory = []; 
-let acceptedList = [];
-let rejectedList = [];
-let cancelledList = [];
-let reqCounter = 0;
-let armedMode = null;
-let pendingPickup = null, pendingDrop = null;
-let simRunning = false, simTimer = null;
-
-let map;
-let markers = {};
-let mxLocations = [];
-let mxSource = {id:'S', kind:'source', label:'S'};
-let mxDestination = {id:'E', kind:'destination', label:'E'};
-
-function mkId(prefix){ return prefix + '_' + (++reqCounter); }
-
-function enterApp(){ document.getElementById('welcome-screen').classList.add('hidden'); }
-function exitWorkspace(){ document.getElementById('welcome-screen').classList.remove('hidden'); }
-
-function openModal(id){ document.getElementById(id).classList.add('active'); }
-function closeModal(id){ document.getElementById(id).classList.remove('active'); }
-
-function showToast(message, kind='ok'){
-  const stack = document.getElementById('toast-stack');
-  const t = document.createElement('div');
-  t.className = 'toast ' + (kind==='ok' ? '' : kind);
-  t.textContent = message;
-  stack.appendChild(t);
-  setTimeout(()=>{ t.remove(); }, 2800);
-}
-
-function tickClock(){
-  document.getElementById('clock').innerHTML = `<b>${new Date().toLocaleTimeString()}</b>`;
-}
-setInterval(tickClock, 1000);
-tickClock();
-
-/* =========================================================
-   INFINITE SEARCH ENGINE AUTOCOMPLETE PLUGIN
-   ========================================================= */
-function setupSearchEngine(inputId, suggestId, errorId, type) {
-  const input = document.getElementById(inputId);
-  const box = document.getElementById(suggestId);
-  const err = document.getElementById(errorId);
-
-  input.addEventListener('input', () => {
-    const val = input.value.trim().toLowerCase();
-    box.innerHTML = '';
-    err.style.display = 'none';
-
-    if(!val) { box.classList.remove('active'); return; }
-    
-    const matches = GLOBAL_LOCATIONS.filter(l => l.name.toLowerCase().includes(val));
-    if(matches.length === 0) {
-      err.style.display = 'block';
-      box.classList.remove('active');
-      return;
-    }
-
-    box.classList.add('active');
-    matches.forEach(match => {
-      const item = document.createElement('div');
-      item.className = 'suggestion-item';
-      item.textContent = match.name;
-      item.addEventListener('click', () => {
-        input.value = match.name;
-        box.classList.remove('active');
+    <div class="app-container" id="appContainer">
         
-        const coord = { lat: match.lat, lng: match.lng };
-        applyPlacement(type, coord);
-        map.flyTo({ center: [coord.lng, coord.lat], zoom: 14 });
-      });
-      box.appendChild(item);
-    });
-  });
+        <!-- Left Configuration Section (Wider) -->
+        <div class="left-panel" id="leftPanel">
+            
+            <!-- System Configuration Section -->
+            <div class="card" id="systemConfigCard">
+                <div class="card-header">
+                    <h3>System Configuration</h3>
+                    <button class="toggle-btn" onclick="toggleSection('systemConfigCard', this)">^</button>
+                </div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Operation Mode</label>
+                            <select>
+                                <option>Standard Optimization</option>
+                                <option>Express Routing</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Radius (km)</label>
+                            <input type="number" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Buffer Time (mins)</label>
+                            <input type="number" value="15">
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  // Handle case where user hits enter on unmatched location
-  input.addEventListener('change', () => {
-    setTimeout(() => {
-      const val = input.value.trim().toLowerCase();
-      if(!val) return;
-      const match = GLOBAL_LOCATIONS.find(l => l.name.toLowerCase() === val);
-      if(!match) { err.style.display = 'block'; }
-    }, 200);
-  });
-}
+            <!-- New Request Setup Section -->
+            <div class="card" id="newRequestCard">
+                <div class="card-header">
+                    <h3>New Request Setup</h3>
+                    <button class="toggle-btn" onclick="toggleSection('newRequestCard', this)">^</button>
+                </div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Client Reference ID</label>
+                            <input type="text" placeholder="REQ-10029">
+                        </div>
+                        <div class="form-group">
+                            <label>Service Tier</label>
+                            <select>
+                                <option>Premium</option>
+                                <option>Standard</option>
+                                <option>Economy</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priority Level</label>
+                            <select>
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-setupSearchEngine('pu-search', 'pu-suggest', 'pu-error', 'pickup');
-setupSearchEngine('dr-search', 'dr-suggest', 'dr-error', 'drop');
+            <!-- Add Multiple Request Section (Tabular) -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Add Multiple Requests</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pickup Column</th>
+                                    <th>Dropoff Column</th>
+                                    <th>Flexibility Column</th>
+                                    <th>Set on Map Column</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text" class="table-input" placeholder="Enter Pickup Address"></td>
+                                    <td><input type="text" class="table-input" placeholder="Enter Dropoff Address"></td>
+                                    <td>
+                                        <select class="table-input">
+                                            <option>+/- 30 mins</option>
+                                            <option>+/- 1 hour</option>
+                                            <option>Strict</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="map-pin-btn">📍 Set Location</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" class="table-input" placeholder="Enter Pickup Address"></td>
+                                    <td><input type="text" class="table-input" placeholder="Enter Dropoff Address"></td>
+                                    <td>
+                                        <select class="table-input">
+                                            <option>+/- 30 mins</option>
+                                            <option>+/- 1 hour</option>
+                                            <option>Strict</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="map-pin-btn">📍 Set Location</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+                        <button class="btn-primary">+ Add New Row</button>
+                    </div>
+                </div>
+            </div>
 
-/* =========================================================
-   TABS SWITCHING MANAGEMENT
-   ========================================================= */
-document.getElementById('tab-geo').addEventListener('click', ()=>switchMode('geo'));
-document.getElementById('tab-matrix').addEventListener('click', ()=>switchMode('matrix'));
+        </div>
 
-function switchMode(mode){
-  if(MODE === mode) return;
-  MODE = mode;
-  document.getElementById('tab-geo').classList.toggle('active', mode==='geo');
-  document.getElementById('tab-matrix').classList.toggle('active', mode==='matrix');
-  document.getElementById('geo-panels').classList.toggle('hidden', mode!=='geo');
-  document.getElementById('matrix-panels').classList.toggle('hidden', mode!=='matrix');
-  document.getElementById('map-col').classList.toggle('hidden', mode!=='geo');
-  document.getElementById('schematic-col').classList.toggle('hidden', mode!=='matrix');
-  document.getElementById('geo-trigger-panel').classList.toggle('hidden', mode!=='geo');
+        <!-- Adjustable Separator Line -->
+        <div class="resizer" id="dragLine"></div>
 
-  route = []; manifest = {}; acceptedList = []; rejectedList = []; cancelledList = [];
-  document.getElementById('feed').innerHTML = '<div class="empty-note">Live dispatch events will stream here</div>';
+        <!-- Right Map Section (Smaller / Adjustable) -->
+        <div class="right-panel" id="rightPanel">
+            <div class="map-placeholder">
+                <div>🗺️ Map Section (Adjustable Size)</div>
+            </div>
+        </div>
 
-  if(mode === 'geo'){
-    applySystemConfiguration(false);
-  } else {
-    route = [mxSource, mxDestination];
-    renderMatrixLocations(); renderMatrixTable(); renderMatrixRequestOptions(); renderAll();
-  }
-}
+    </div>
 
-/* =========================================================
-   GEOGRAPHY VIEWPORT CONSOLE ENGINE
-   ========================================================= */
-function initMap(){
-  map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://tiles.openfreemap.org/styles/positron',
-    center: [76.6346, 27.5530],
-    zoom: 13, pitch: 45, bearing: -5
-  });
+    <script>
+        // Collapsible "^" Panel Logic
+        function toggleSection(cardId, button) {
+            const card = document.getElementById(cardId);
+            card.classList.toggle('is-collapsed');
+            button.classList.toggle('collapsed');
+        }
 
-  map.on('load', () => {
-    map.addSource('route-source', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
-    });
-    map.addLayer({
-      id: 'route-layer', type: 'line', source: 'route-source',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.85 }
-    });
-    applySystemConfiguration(false);
-  });
-  map.on('click', onMapClick);
-}
+        // Draggable Split Screen Logic
+        const container = document.getElementById('appContainer');
+        const leftPanel = document.getElementById('leftPanel');
+        const resizer = document.getElementById('dragLine');
 
-function createDOMMarker(kind) {
-  const palette = {
-    source: { bg: '#d97706', text: 'S', size: 28 },
-    destination: { bg: '#1e293b', text: 'E', size: 28 },
-    pickup: { bg: '#0d9488', text: 'P', size: 24 },
-    drop: { bg: '#2563eb', text: 'D', size: 24 },
-    pending: { bg: '#94a3b8', text: '?', size: 22 }
-  };
-  const p = palette[kind];
-  const el = document.createElement('div');
-  el.className = 'mapbox-div-icon';
-  el.innerHTML = `<div style="width:${p.size}px;height:${p.size}px;border-radius:50%;background:${p.bg};display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-size:11px;font-weight:700;color:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.2);">${p.text}</div>`;
-  return el;
-}
+        let isResizing = false;
 
-function onMapClick(e){
-  if(MODE !== 'geo' || !armedMode) return;
-  applyPlacement(armedMode, { lat: e.lngLat.lat, lng: e.lngLat.lng });
-  disarm();
-}
+        resizer.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none'; // Stop text highlight while dragging
+        });
 
-function applyPlacement(kind, latlng){
-  if(kind === 'source'){
-    document.getElementById('src-lat').value = latlng.lat.toFixed(5);
-    document.getElementById('src-lng').value = latlng.lng.toFixed(5);
-  } else if(kind === 'destination'){
-    document.getElementById('dst-lat').value = latlng.lat.toFixed(5);
-    document.getElementById('dst-lng').value = latlng.lng.toFixed(5);
-  } else if(kind === 'pickup'){
-    pendingPickup = {id:mkId('P'), kind:'pickup', label:'P', ...latlng};
-    updateReqPreview();
-  } else if(kind === 'drop'){
-    pendingDrop = {id:mkId('D'), kind:'drop', label:'D', ...latlng};
-    updateReqPreview();
-  }
-  renderMarkers();
-}
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            
+            // Calculate new width percent based on cursor position relative to window width
+            let containerWidth = container.clientWidth;
+            let newLeftWidth = (e.clientX / containerWidth) * 100;
+            
+            // Set min/max boundaries
+            if (newLeftWidth > 40 && newLeftWidth < 85) {
+                leftPanel.style.width = `${newLeftWidth}%`;
+            }
+        });
 
-function disarm(){ armedMode = null; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('armed')); }
-function arm(mode, btn){ const was = armedMode===mode; disarm(); if(!was){ armedMode=mode; btn.classList.add('armed'); } }
-
-document.getElementById('mode-source').addEventListener('click', e=>arm('source', e.currentTarget));
-document.getElementById('mode-destination').addEventListener('click', e=>arm('destination', e.currentTarget));
-document.getElementById('mode-pickup').addEventListener('click', e=>arm('pickup', e.currentTarget));
-document.getElementById('mode-drop').addEventListener('click', e=>arm('drop', e.currentTarget));
-
-function applySystemConfiguration(triggerToast = true){
-  const sLat = parseFloat(document.getElementById('src-lat').value);
-  const sLng = parseFloat(document.getElementById('src-lng').value);
-  const dLat = parseFloat(document.getElementById('dst-lat').value);
-  const dLng = parseFloat(document.getElementById('dst-lng').value);
-  capacity = parseInt(document.getElementById('capacity').value) || 2;
-
-  if(!isNaN(sLat) && !isNaN(sLng)) source = {id:'SOURCE', kind:'source', label:'S', lat:sLat, lng:sLng};
-  if(!isNaN(dLat) && !isNaN(dLng)) destination = {id:'DEST', kind:'destination', label:'E', lat:dLat, lng:dLng};
-  
-  const intermediates = route.slice(1, Math.max(1, route.length-1)).filter(n=>n.kind!=='source' && n.kind!=='destination');
-  route = [source, ...intermediates, destination];
-  
-  renderAll();
-  closeModal('modal-config');
-  if(triggerToast) showToast('Configuration updated successfully!', 'ok');
-}
-document.getElementById('apply-anchors-btn').addEventListener('click', ()=>applySystemConfiguration(true));
-
-function updateReqPreview(){
-  const preview = document.getElementById('req-preview');
-  const submitBtn = document.getElementById('submit-req');
-  const pLabel = pendingPickup ? `(${pendingPickup.lat.toFixed(4)}, ${pendingPickup.lng.toFixed(4)})` : '—';
-  const dLabel = pendingDrop ? `(${pendingDrop.lat.toFixed(4)}, ${pendingDrop.lng.toFixed(4)})` : '—';
-  let baseDist = '—';
-  if(pendingPickup && pendingDrop) baseDist = (haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR).toFixed(2) + ' km';
-  preview.innerHTML = `pickup: <b>${pLabel}</b><br>dropoff: <b>${dLabel}</b><br>base distance: <b>${baseDist}</b>`;
-  submitBtn.disabled = !(pendingPickup && pendingDrop && source && destination);
-}
-
-document.getElementById('submit-req').addEventListener('click', ()=>{
-  if(!(pendingPickup && pendingDrop && source && destination)) return;
-  const baseDist = haversineKm(pendingPickup, pendingDrop) * ROAD_FACTOR;
-  const req = { id:mkId('REQ'), pickup:{...pendingPickup}, drop:{...pendingDrop}, dist:baseDist, flex: parseFloat(document.getElementById('req-flex').value)||1.5 };
-  processRequest(req);
-  pendingPickup = null; pendingDrop = null;
-  document.getElementById('pu-search').value = '';
-  document.getElementById('dr-search').value = '';
-  updateReqPreview();
-  closeModal('modal-request');
-});
-
-/* =========================================================
-   DISTANCE MATRIX INTERFACE SCHEMATICS
-   ========================================================= */
-document.getElementById('mx-apply-anchors').addEventListener('click', () => {
-  const sId = document.getElementById('mx-src-id').value.trim() || 'S';
-  const dId = document.getElementById('mx-dst-id').value.trim() || 'E';
-  mxSource = {id:sId, kind:'source', label:sId};
-  mxDestination = {id:dId, kind:'destination', label:dId};
-  route = [mxSource, mxDestination]; manifest = {}; acceptedList = []; rejectedList = [];
-  renderMatrixTable(); renderMatrixRequestOptions(); renderAll();
-});
-
-document.getElementById('add-loc-btn').addEventListener('click', () => {
-  const idInput = document.getElementById('new-loc-id'); const id = idInput.value.trim();
-  if(!id || mxLocations.find(l=>l.id===id) || id===mxSource.id || id===mxDestination.id) return;
-  mxLocations.push({id}); idInput.value = '';
-  renderMatrixLocations(); renderMatrixTable(); renderMatrixRequestOptions();
-});
-
-function removeMxLocation(id){
-  mxLocations = mxLocations.filter(l=>l.id!==id);
-  Object.keys(matrixDist).forEach(k=>{ if(k.startsWith(id+'|') || k.endsWith('|'+id)) delete matrixDist[k]; });
-  renderMatrixLocations(); renderMatrixTable(); renderMatrixRequestOptions();
-}
-
-function renderMatrixLocations(){
-  const row = document.getElementById('loc-chip-row'); row.innerHTML = '';
-  mxLocations.forEach(loc=>{
-    const chip = document.createElement('div'); chip.className = 'loc-chip';
-    chip.innerHTML = `${loc.id} <button data-id="${loc.id}">×</button>`;
-    chip.querySelector('button').addEventListener('click', e=>removeMxLocation(e.target.dataset.id));
-    row.appendChild(chip);
-  });
-}
-
-function allMxNodes(){ return [mxSource, mxDestination, ...mxLocations.map(l=>({id:l.id, kind:'stop', label:l.id}))]; }
-
-function renderMatrixTable(){
-  const nodes = allMxNodes(); const wrap = document.getElementById('matrix-wrap');
-  let html = '<table class="matrix"><thead><tr><th></th>';
-  nodes.forEach(n=> html += `<th>${n.id}</th>`);
-  html += '</tr></thead><tbody>';
-  nodes.forEach(rowN=>{
-    html += `<tr><th>${rowN.id}</th>`;
-    nodes.forEach(colN=>{
-      if(rowN.id===colN.id) html += `<td class="diag">0</td>`;
-      else {
-        const val = getMatrixDist(rowN.id, colN.id);
-        html += `<td><input type="number" min="0" step="0.1" value="${val}" data-a="${rowN.id}" data-b="${colN.id}"></td>`;
-      }
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>'; wrap.innerHTML = html;
-  wrap.querySelectorAll('input').forEach(inp=>{
-    inp.addEventListener('change', e=>{
-      setMatrixDist(e.target.dataset.a, e.target.dataset.b, parseFloat(e.target.value)||0);
-      renderMatrixTable(); renderMatrixRequestPreview();
-    });
-  });
-}
-
-function renderMatrixRequestOptions(){
-  const nodes = allMxNodes();
-  ['mx-pickup','mx-drop'].forEach(selId=>{
-    const sel = document.getElementById(selId); const prev = sel.value;
-    sel.innerHTML = nodes.map(n=>`<option value="${n.id}">${n.id}</option>`).join('');
-    if(nodes.find(n=>n.id===prev)) sel.value = prev;
-  });
-  renderMatrixRequestPreview();
-}
-
-function renderMatrixRequestPreview(){
-  const p = document.getElementById('mx-pickup').value; const d = document.getElementById('mx-drop').value;
-  document.getElementById('mx-req-preview').innerHTML = `base distance: <b>${getMatrixDist(p,d).toFixed(2)} km</b>`;
-}
-document.getElementById('mx-pickup').addEventListener('change', renderMatrixRequestPreview);
-document.getElementById('mx-drop').addEventListener('change', renderMatrixRequestPreview);
-
-document.getElementById('mx-submit-req').addEventListener('click', ()=>{
-  const pId = document.getElementById('mx-pickup').value; const dId = document.getElementById('mx-drop').value;
-  if(!pId || !dId || pId===dId) return;
-  processRequest({
-    id: mkId('REQ'), pickup:{id:pId, kind:'pickup', label:pId}, drop:{id:dId, kind:'drop', label:dId},
-    dist: getMatrixDist(pId, dId), flex: parseFloat(document.getElementById('mx-req-flex').value) || 0
-  });
-});
-
-/* =========================================================
-   TRANSACTION PIPELINE & COMPILATION ARCHIVE LOGS
-   ========================================================= */
-const REASON_TEXT = { capacity: 'Exceeds Carrier Capacity Bounds', chronology: "Chronological Sequence Error", flexibility: 'Detour Window Bound Breached', 'no-valid-slot': 'No Safe Insertion Coordinates' };
-
-function processRequest(req){
-  const result = insertRequestLive(route, manifest, req, capacity);
-  
-  // Package structural Ledger history element state entry
-  requestHistory.push({
-    id: req.id, pickup: req.pickup.label || req.pickup.id, drop: req.drop.label || req.drop.id,
-    accepted: result.accepted, costIncrease: result.costIncrease,
-    reason: result.accepted ? '' : (REASON_TEXT[result.reason] || 'Constraint Infraction')
-  });
-  updateHistoryLedgerView();
-
-  logEvent(result, req);
-  if(result.accepted){
-    route = result.route; manifest = result.manifest; acceptedList.push(req);
-    showToast(`${req.id} Routing Locked`, 'ok');
-  } else {
-    rejectedList.push(req); showToast(`${req.id} Dropped from Pipeline`, 'no');
-  }
-  document.getElementById('stat-time').textContent = result.elapsedMs.toFixed(2) + ' ms';
-  renderAll();
-}
-
-function cancelRequest(reqId){
-  const req = manifest[reqId]; if(!req) return;
-  route = route.filter(node => node.id !== req.pickup.id && node.id !== req.drop.id);
-  delete manifest[reqId];
-  acceptedList = acceptedList.filter(r => r.id !== reqId); cancelledList.push(req);
-
-  const feed = document.getElementById('feed'); if(feed.querySelector('.empty-note')) feed.innerHTML = '';
-  feed.insertAdjacentHTML('afterbegin', `<div class="feed-item cancel"><span class="ts">${new Date().toLocaleTimeString()}</span>${reqId} <b>Evicted from Manifest</b></div>`);
-  showToast(`${reqId} Evicted from Manifest`, 'cancel');
-  renderAll();
-}
-
-function logEvent(result, req){
-  const feed = document.getElementById('feed'); if(feed.querySelector('.empty-note')) feed.innerHTML = '';
-  if(result.accepted){
-    feed.insertAdjacentHTML('afterbegin', `<div class="feed-item ok"><span class="ts">${new Date().toLocaleTimeString()}</span><b>${req.id}</b> Accepted (Δ${result.costIncrease.toFixed(2)}km)</div>`);
-  } else {
-    feed.insertAdjacentHTML('afterbegin', `<div class="feed-item no"><span class="ts">${new Date().toLocaleTimeString()}</span><b>${req.id}</b> Rejected: <span class="reason">${REASON_TEXT[result.reason]||'Infraction'}</span></div>`);
-  }
-}
-
-function updateHistoryLedgerView(){
-  const ledger = document.getElementById('history-ledger'); ledger.innerHTML = '';
-  if(requestHistory.length === 0){ ledger.innerHTML = '<div class="empty-note">No archival logs compiled yet.</div>'; return; }
-  [...requestHistory].reverse().forEach(h => {
-    ledger.insertAdjacentHTML('beforeend', `
-      <div class="history-item" title="${h.accepted ? 'Added cost: '+h.costIncrease.toFixed(2)+' km' : 'Reason: '+h.reason}">
-        <span><b>${h.id}</b> (${h.pickup}→${h.drop})</span>
-        <span class="status-tag ${h.accepted?'accepted':'rejected'}">${h.accepted?'OK':'FAIL'}</span>
-      </div>`);
-  });
-}
-
-/* =========================================================
-   UI VISUALIZATION DISPATCH SYNC
-   ========================================================= */
-function renderMarkers(){
-  if(MODE !== 'geo' || !map || !map.isStyleLoaded()) return;
-  Object.values(markers).forEach(m => m.remove()); markers = {};
-  const place = (n, k) => { markers[n.id] = new maplibregl.Marker({ element: createDOMMarker(k) }).setLngLat([n.lng, n.lat]).addTo(map); };
-
-  if(source) place(source, 'source'); if(destination) place(destination, 'destination');
-  route.forEach(n => { if(n.kind==='pickup'||n.kind==='drop') place(n, n.kind); });
-  if(pendingPickup) place(pendingPickup, 'pending'); if(pendingDrop) place(pendingDrop, 'pending');
-}
-
-function renderTripline(check){
-  const tripline = document.getElementById('tripline'); tripline.innerHTML = ''; if(route.length < 2) return;
-  const maxOcc = Math.max(1, ...check.passengerCounts);
-  route.forEach((n,i)=>{
-    const isTerminal = i===0 || i===route.length-1; const occ = check.passengerCounts[i] ?? 0;
-    tripline.insertAdjacentHTML('beforeend', `
-      <div class="stop ${isTerminal?'terminal':''}">
-        <div class="occ-bar" style="height:${6+(occ/maxOcc)*34}px"></div><div class="occ-num">${occ}</div>
-        <div class="rail"></div><div class="node"></div><div class="stop-label">${n.label||n.id}</div>
-        <div class="stop-sub">${i===0?'START':(i===route.length-1?'END':n.kind)}</div>
-      </div>`);
-  });
-}
-
-function renderRouteAndStats(){
-  const check = route.length > 1 ? validateDynamicConstraints(route, manifest, capacity) : {passengerCounts:[]};
-  const dist = route.length > 1 ? computeRouteDistance(route) : 0;
-  
-  document.getElementById('stat-dist').textContent = dist.toFixed(2) + ' km';
-  document.getElementById('stat-accepted').textContent = acceptedList.length;
-  document.getElementById('stat-rejected').textContent = rejectedList.length;
-
-  const list = document.getElementById('route-list'); list.innerHTML = '';
-  if(route.length < 2) { list.innerHTML = '<li class="empty-note">Awaiting configurations...</li>'; }
-  else {
-    route.forEach((n,i)=> list.insertAdjacentHTML('beforeend', `<li><span>${i+1}. ${n.label||n.id} <span class="kind-tag">${n.kind}</span></span><span class="occ">${check.passengerCounts[i]??0} 🧍</span></li>`));
-  }
-
-  if(MODE === 'geo' && map && map.isStyleLoaded()){
-    if(route.length > 1){
-      const coords = route.map(n => [n.lng, n.lat]);
-      map.getSource('route-source').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
-      map.fitBounds(coords.reduce((acc, c) => acc.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0])), { padding: 60, duration: 800 });
-    } else { map.getSource('route-source').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }); }
-  } else { renderTripline(check); }
-}
-
-function renderManifestList(){
-  const list = document.getElementById('manifest-list'); list.innerHTML = '';
-  const active = Object.values(manifest);
-  if(active.length === 0){ list.innerHTML = '<li class="empty-note">No active manifest tracks</li>'; return; }
-  active.forEach(req=>{
-    const li = document.createElement('li'); li.className = 'manifest-item';
-    li.innerHTML = `<span><span class="mi-label">${req.id}</span> ${req.pickup.label||req.pickup.id}→${req.drop.label||req.drop.id}<div class="mi-sub">${req.dist.toFixed(1)}km base · Window Δ${req.flex}</div></span><button class="cancel-btn">×</button>`;
-    li.querySelector('.cancel-btn').addEventListener('click', ()=>cancelRequest(req.id));
-    list.appendChild(li);
-  });
-}
-
-function renderAll(){ renderMarkers(); renderRouteAndStats(); renderManifestList(); }
-
-/* =========================================================
-   SIMULATION ENGINE SUITE
-   ========================================================= */
-function spawnRandomRequest(){
-  if(!source || !destination) return;
-  const center = {lat:(source.lat+destination.lat)/2, lng:(source.lng+destination.lng)/2};
-  const rand = (c) => ({ lat: c.lat + (Math.random()-0.5)*0.02, lng: c.lng + (Math.random()-0.5)*0.02 });
-  const p = rand(center), d = rand(center);
-  processRequest({ id: mkId('REQ'), pickup: {id:mkId('P'), kind:'pickup', label:'P', ...p}, drop: {id:mkId('D'), kind:'drop', label:'D', ...d}, dist: haversineKm(p,d)*ROAD_FACTOR, flex: 1.5 });
-}
-document.getElementById('sim-toggle').addEventListener('click', (e)=>{
-  simRunning = !simRunning;
-  if(simRunning){
-    if(!source || !destination) return (simRunning = false);
-    e.target.textContent='⏸ Stop Sim'; e.target.classList.add('active'); simTimer = setInterval(spawnRandomRequest, 2500);
-  } else { e.target.textContent='▶ Start Sim'; e.target.classList.remove('active'); clearInterval(simTimer); }
-});
-document.getElementById('reset-btn').addEventListener('click', ()=>{
-  simRunning=false; clearInterval(simTimer); document.getElementById('sim-toggle').textContent='▶ Start Sim';
-  document.getElementById('sim-toggle').classList.remove('active');
-  manifest={}; acceptedList=[]; rejectedList=[]; cancelledList=[]; pendingPickup=null; pendingDrop=null;
-  requestHistory = []; updateHistoryLedgerView();
-  document.getElementById('feed').innerHTML = '<div class="empty-note">Awaiting dynamic inputs...</div>';
-  applySystemConfiguration(false);
-});
-
-initMap();
-</script>
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            }
+        });
+    </script>
 </body>
 </html>
