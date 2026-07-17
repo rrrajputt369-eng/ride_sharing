@@ -34,7 +34,7 @@
 
         /* Sidebar styling */
         #sidebar {
-            width: 380px;
+            width: 400px;
             background: var(--panel-bg);
             color: var(--panel-text);
             display: flex;
@@ -44,37 +44,65 @@
         }
 
         .header {
-            padding: 24px;
-            border-bottom: 1px solid var(--accent-muted);
+            padding: 20px;
+            border-bottom: 1px solid #334155;
         }
 
         .header h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
             color: var(--accent-gold);
         }
 
+        /* Tabs for switching input mode */
+        .tab-container {
+            display: flex;
+            background: #0f172a;
+            padding: 4px;
+            margin: 15px 20px 0 20px;
+            border-radius: 6px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--panel-bg);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
         .controls {
-            padding: 24px;
+            padding: 20px;
             flex-grow: 1;
             overflow-y: auto;
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .input-group label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #94a3b8;
             margin-bottom: 6px;
             text-transform: uppercase;
         }
 
-        input[type="range"], input[type="number"] {
+        input[type="range"], input[type="number"], textarea {
             width: 100%;
             background: #0f172a;
             border: 1px solid var(--accent-muted);
@@ -82,6 +110,12 @@
             padding: 8px;
             border-radius: 4px;
             font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
         }
 
         .value-display {
@@ -92,12 +126,12 @@
 
         /* Action Buttons */
         .actions {
-            padding: 24px;
+            padding: 20px;
             background: #0f172a;
-            border-top: 1px solid var(--accent-muted);
+            border-top: 1px solid #334155;
         }
 
-        button {
+        button.primary-btn {
             width: 100%;
             padding: 12px;
             background: var(--accent-gold);
@@ -110,7 +144,7 @@
             transition: background 0.2s;
         }
 
-        button:hover {
+        button.primary-btn:hover {
             background: #b45309;
         }
 
@@ -167,7 +201,7 @@
         .route-step {
             margin-top: 15px;
             font-size: 0.85rem;
-            max-height: 250px;
+            max-height: 200px;
             overflow-y: auto;
         }
         
@@ -192,11 +226,18 @@
         <div class="header">
             <h1>Trail Log Planner</h1>
         </div>
+
+        <!-- Mode Toggle Tabs -->
+        <div class="tab-container">
+            <button id="tab-map" class="tab-btn active" onclick="setMode('map')">🗺️ Map Mode</button>
+            <button id="tab-matrix" class="tab-btn" onclick="setMode('matrix')">🔢 Matrix Mode</button>
+        </div>
         
         <div class="controls">
+            <!-- Global Budget & Penalties -->
             <div class="input-group">
                 <label>Distance Budget (km) <span class="value-display" id="budgetValue">30 km</span></label>
-                <input type="range" id="budget" min="10" max="60" value="30" oninput="document.getElementById('budgetValue').innerText = this.value + ' km'">
+                <input type="range" id="budget" min="5" max="100" value="30" oninput="document.getElementById('budgetValue').innerText = this.value + ' km'">
             </div>
 
             <div class="input-group">
@@ -204,26 +245,50 @@
                 <input type="range" id="threshold" min="1" max="5" value="1" oninput="document.getElementById('threshValue').innerText = this.value">
             </div>
 
-            <div style="margin-top: 30px;">
-                <label style="font-size: 0.85rem; color: #94a3b8; text-transform: uppercase;">Dataset Details</label>
-                <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-top: 10px; line-height: 1.5; color: #cbd5e1;">
-                    • Start: Jaipur Junction<br>
-                    • End: Jaipur Airport<br>
-                    <span id="locCountText">• 8 Intermediate Stops Loaded</span><br>
-                    <span style="color: var(--accent-gold); font-size: 0.7rem; margin-top: 5px; display: block;">(Historical, Nature, Food)</span>
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+
+            <!-- Map Mode Inputs -->
+            <div id="map-inputs">
+                <label style="font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; display:block; margin-bottom: 8px;">Active Dataset (Jaipur)</label>
+                <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: #cbd5e1;">
+                    • Start (0): Jaipur Junction<br>
+                    • End (1): Jaipur Airport<br>
+                    <span id="locCountText">• 8 Waypoints Loaded</span>
                 </div>
+                <button style="background: #334155; font-size: 0.8rem; padding: 8px; margin-top: 15px;" onclick="injectStressLocations()">
+                    Load Large Dataset (15 locations)
+                </button>
             </div>
 
-            <!-- Quick Add to Trigger Fallback Heuristic -->
-            <div style="margin-top: 24px;">
-                <button style="background: #334155; font-size: 0.8rem; padding: 8px;" onclick="injectStressLocations()">
-                    Simulate Large Dataset (15 locations)
-                </button>
+            <!-- Matrix Mode Inputs -->
+            <div id="matrix-inputs" style="display: none;">
+                <div class="input-group">
+                    <label>Nodes Definition (JSON format)</label>
+                    <textarea id="nodesJSON">[
+  {"id": 0, "name": "Node 0 (Start)", "cat": "A", "score": 0},
+  {"id": 1, "name": "Node 1 (End)", "cat": "B", "score": 0},
+  {"id": 2, "name": "Node 2", "cat": "A", "score": 8},
+  {"id": 3, "name": "Node 3", "cat": "A", "score": 10},
+  {"id": 4, "name": "Node 4", "cat": "C", "score": 6},
+  {"id": 5, "name": "Node 5", "cat": "C", "score": 7}
+]</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Adjacency Distance Matrix</label>
+                    <textarea id="matrixJSON" style="min-height: 140px;">[
+  [0, 15, 4, 8, 12, 18],
+  [15, 0, 11, 7, 9, 5],
+  [4, 11, 0, 5, 10, 15],
+  [8, 7, 5, 0, 6, 8],
+  [12, 9, 10, 6, 0, 4],
+  [18, 5, 15, 8, 4, 0]
+]</textarea>
+                </div>
             </div>
         </div>
 
         <div class="actions">
-            <button onclick="computeRoute()">Compute Optimal Route</button>
+            <button class="primary-btn" onclick="computeRoute()">Compute Optimal Route</button>
         </div>
     </div>
 
@@ -235,14 +300,22 @@
     </div>
 
     <script>
-        // Initialize Map
+        // Set state system
+        let activeMode = 'map'; // 'map' or 'matrix'
+        let locations = [];
+        let distanceMatrix = [];
+
+        // Initialize map
         const map = L.map('map').setView([26.9124, 75.7873], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Dynamic locations array starting with 10 landmarks
-        let locations = [
+        let routeLayer = null;
+        let markersLayer = L.layerGroup().addTo(map);
+
+        // Preloaded Jaipur Dataset
+        const mapLocations = [
             { id: 0, name: "Jaipur Junction (Start)", lat: 26.922, lng: 75.787, cat: "START", score: 0 },
             { id: 1, name: "Jaipur Airport (End)", lat: 26.828, lng: 75.805, cat: "END", score: 0 },
             { id: 2, name: "Hawa Mahal", lat: 26.923, lng: 75.826, cat: "Historical", score: 8 },
@@ -255,15 +328,61 @@
             { id: 9, name: "Tapri Central", lat: 26.901, lng: 75.800, cat: "Food", score: 8 }
         ];
 
-        let routeLayer = null;
-        let markersLayer = L.layerGroup().addTo(map);
+        locations = [...mapLocations];
 
-        function updateDatasetText() {
-            document.getElementById('locCountText').innerText = `• ${locations.length - 2} Intermediate Stops Loaded`;
+        function setMode(mode) {
+            activeMode = mode;
+            document.getElementById('tab-map').classList.toggle('active', mode === 'map');
+            document.getElementById('tab-matrix').classList.toggle('active', mode === 'matrix');
+            document.getElementById('map-inputs').style.display = mode === 'map' ? 'block' : 'none';
+            document.getElementById('matrix-inputs').style.display = mode === 'matrix' ? 'block' : 'none';
+
+            if (mode === 'map') {
+                locations = [...mapLocations];
+                drawInitialMarkers();
+            } else {
+                loadMatrixData();
+            }
         }
-        updateDatasetText();
 
-        // Draw initial markers
+        // Generate circular coordinates so matrix system renders on the map cleanly
+        function generateCircularCoords(numNodes) {
+            const centerLat = 26.9124;
+            const centerLng = 75.7873;
+            const radius = 0.04; // Spread node markers slightly
+            return Array.from({length: numNodes}, (_, i) => {
+                const angle = (2 * Math.PI * i) / numNodes;
+                return {
+                    lat: centerLat + radius * Math.cos(angle),
+                    lng: centerLng + radius * Math.sin(angle)
+                };
+            });
+        }
+
+        function loadMatrixData() {
+            try {
+                const nodes = JSON.parse(document.getElementById('nodesJSON').value);
+                const matrix = JSON.parse(document.getElementById('matrixJSON').value);
+
+                if (nodes.length !== matrix.length) {
+                    alert("Error: Number of nodes does not match matrix dimensions.");
+                    return;
+                }
+
+                const coords = generateCircularCoords(nodes.length);
+                locations = nodes.map((n, idx) => ({
+                    ...n,
+                    lat: coords[idx].lat,
+                    lng: coords[idx].lng
+                }));
+                distanceMatrix = matrix;
+
+                drawInitialMarkers();
+            } catch (err) {
+                alert("Invalid JSON format. Check your input text.");
+            }
+        }
+
         function drawInitialMarkers() {
             markersLayer.clearLayers();
             locations.forEach((loc, i) => {
@@ -276,14 +395,19 @@
                     opacity: 1,
                     fillOpacity: 0.8
                 }).addTo(markersLayer);
-                marker.bindPopup(`<b>${loc.name}</b><br>Cat: ${loc.cat}<br>Score: ${loc.score}`);
+                
+                const matrixText = activeMode === 'matrix' ? `<br>Node Index: ${loc.id}` : '';
+                marker.bindPopup(`<b>${loc.name}</b><br>Category: ${loc.cat}<br>Score: ${loc.score}${matrixText}`);
             });
+            if (locations.length > 0) {
+                const bounds = L.latLngBounds(locations.map(l => [l.lat, l.lng]));
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
         }
         drawInitialMarkers();
 
-        // Inject simulated locations to test Heuristic Fallback
         function injectStressLocations() {
-            if (locations.length > 10) return; // Prevent double injection
+            if (mapLocations.length > 10) return;
             const extra = [
                 { id: 10, name: "Albert Hall Museum", lat: 26.911, lng: 75.819, cat: "Historical", score: 7 },
                 { id: 11, name: "Birla Mandir", lat: 26.892, lng: 75.815, cat: "Historical", score: 6.5 },
@@ -291,25 +415,30 @@
                 { id: 13, name: "Sisodia Rani Garden", lat: 26.898, lng: 75.865, cat: "Nature", score: 5.5 },
                 { id: 14, name: "Masala Chowk", lat: 26.909, lng: 75.818, cat: "Food", score: 8.5 }
             ];
-            locations = [...locations, ...extra];
-            updateDatasetText();
+            mapLocations.push(...extra);
+            locations = [...mapLocations];
+            document.getElementById('locCountText').innerText = `• ${locations.length - 2} Waypoints Loaded`;
             drawInitialMarkers();
-            alert("Added 5 more locations! N is now 15. The system will automatically use the Beam + SA Fallback.");
+            alert("Added 5 more locations! Using approximate fallback modes (Beam Search + SA) automatically.");
         }
 
-        // Haversine distance calculator
+        // Distance Routing Handler (Dynamic switch based on system selected)
         function getDistance(loc1, loc2) {
-            const R = 6371;
-            const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
-            const dLng = (loc2.lng - loc1.lng) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            if (activeMode === 'map') {
+                const R = 6371; // Earth's radius in km
+                const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
+                const dLng = (loc2.lng - loc1.lng) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
+                          Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            } else {
+                return distanceMatrix[loc1.id][loc2.id];
+            }
         }
 
-        // Exact pre-arrival decay evaluation
+        // Route Scorer with Pre-Arrival Distance Decay
         function evaluateRoute(routeIdxs, threshold) {
             let totalDist = 0;
             let totalScore = 0;
@@ -321,7 +450,7 @@
                 const legDist = getDistance(prev, curr);
                 
                 if (i < routeIdxs.length - 1) {
-                    const decay = Math.exp(-0.1 * totalDist);
+                    const decay = Math.exp(-0.1 * totalDist); // Pre-arrival distance decay
                     catCounts[curr.cat] = (catCounts[curr.cat] || 0) + 1;
                     const penalty = catCounts[curr.cat] > threshold ? 0.9 : 1.0;
                     totalScore += (curr.score * decay * penalty);
@@ -331,7 +460,7 @@
             return { score: totalScore, distance: totalDist };
         }
 
-        // Exact DFS Solver (Best for N <= 12)
+        // Exact DFS solver with branch pruning
         function solveExact(budget, threshold) {
             let bestRoute = null;
             let bestScore = -1;
@@ -371,9 +500,7 @@
             return bestRoute;
         }
 
-        // ================= HEURISTIC FALLBACK ALGORITHMS =================
-
-        // Beam Search (Validated S/d1 density metric, Width = 3)
+        // Beam Search Heuristic
         function solveBeamSearch(budget, threshold) {
             let beams = [[0]];
             let bestCompleteRoute = null;
@@ -386,7 +513,6 @@
                     const currentIdx = path[path.length - 1];
                     const currentDist = path.reduce((acc, node, idx) => idx === 0 ? 0 : acc + getDistance(locations[path[idx-1]], locations[node]), 0);
                     
-                    // Evaluate completing current beam path to the End node (node 1)
                     const distToEnd = getDistance(locations[currentIdx], locations[1]);
                     if (currentDist + distToEnd <= budget) {
                         const candidatePath = [...path, 1];
@@ -397,7 +523,6 @@
                         }
                     }
 
-                    // Look for potential intermediate extensions
                     for (let nextIdx = 2; nextIdx < locations.length; nextIdx++) {
                         if (!path.includes(nextIdx)) {
                             const distToNext = getDistance(locations[currentIdx], locations[nextIdx]);
@@ -405,7 +530,6 @@
                             
                             if (currentDist + distToNext + nextToEnd <= budget) {
                                 const newPath = [...path, nextIdx];
-                                // Use pure S/d1 density metric for ranking the beams
                                 const density = locations[nextIdx].score / Math.max(0.1, distToNext);
                                 candidates.push({ path: newPath, density: density });
                             }
@@ -415,7 +539,6 @@
 
                 if (candidates.length === 0) break;
 
-                // Sort by density desc and prune to width of 3
                 candidates.sort((a, b) => b.density - a.density);
                 beams = candidates.slice(0, 3).map(c => c.path);
             }
@@ -436,19 +559,16 @@
             const minT = 0.1;
 
             while (T > minT) {
-                // Generate mutations: swap two intermediate nodes, insert an unvisited node, or delete a node
                 let mutatedRoute = [...currentRoute];
                 const optType = Math.floor(Math.random() * 3);
 
                 if (optType === 0 && mutatedRoute.length > 3) {
-                    // Swap two intermediate nodes
                     const idx1 = Math.floor(Math.random() * (mutatedRoute.length - 2)) + 1;
                     const idx2 = Math.floor(Math.random() * (mutatedRoute.length - 2)) + 1;
                     const tmp = mutatedRoute[idx1];
                     mutatedRoute[idx1] = mutatedRoute[idx2];
                     mutatedRoute[idx2] = tmp;
                 } else if (optType === 1) {
-                    // Try to insert a random unvisited intermediate node
                     const allNodes = Array.from({length: locations.length - 2}, (_, i) => i + 2);
                     const unvisited = allNodes.filter(n => !mutatedRoute.includes(n));
                     if (unvisited.length > 0) {
@@ -457,12 +577,10 @@
                         mutatedRoute.splice(insertPos, 0, nodeToInsert);
                     }
                 } else if (optType === 2 && mutatedRoute.length > 3) {
-                    // Try to drop an intermediate node
                     const dropIdx = Math.floor(Math.random() * (mutatedRoute.length - 2)) + 1;
                     mutatedRoute.splice(dropIdx, 1);
                 }
 
-                // Verify budget validity of mutated path
                 const evalMutated = evaluateRoute(mutatedRoute, threshold);
                 if (evalMutated.distance <= budget) {
                     const delta = evalMutated.score - currentEval.score;
@@ -482,12 +600,15 @@
             return { route: bestRoute, score: bestScore, distance: evaluateRoute(bestRoute, threshold).distance };
         }
 
-        // Master coordinator
+        // Trigger Computing Router
         function computeRoute() {
+            if (activeMode === 'matrix') {
+                loadMatrixData();
+            }
+
             const budget = parseFloat(document.getElementById('budget').value);
             const threshold = parseInt(document.getElementById('threshold').value);
 
-            // Pre-flight check: Is direct route possible?
             const directDist = getDistance(locations[0], locations[1]);
             if (directDist > budget) {
                 updateUI({ route: [0, 1], score: 0, distance: directDist, error: true }, budget, "None");
@@ -498,11 +619,9 @@
             let method = "";
 
             if (locations.length <= 12) {
-                // GUARANTEED OPTIMAL (Exact Solver)
                 result = solveExact(budget, threshold);
                 method = "Exact DFS";
             } else {
-                // DYNAMIC SCALING FOR LARGE N
                 const beamResult = solveBeamSearch(budget, threshold);
                 if (beamResult) {
                     result = solveSimulatedAnnealing(beamResult.route, budget, threshold);
@@ -536,12 +655,10 @@
                 return;
             }
 
-            // Draw successfully planned route
             const coords = result.route.map(idx => [locations[idx].lat, locations[idx].lng]);
             routeLayer = L.polyline(coords, {color: 'var(--accent-gold)', weight: 4, opacity: 0.8}).addTo(map);
             map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-            // Highlight chosen nodes
             let stepHtml = '<div class="route-step">';
             result.route.forEach((idx, stepNum) => {
                 const loc = locations[idx];
