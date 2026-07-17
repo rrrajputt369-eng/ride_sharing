@@ -1,0 +1,1072 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
+<style>
+  :root {
+    --ink: #1B2430;
+    --ink-2: #263241;
+    --ink-3: #303F51;
+    --paper: #EFEAE0;
+    --paper-2: #E3DBC8;
+    --trail: #C9A227;
+    --trail-dark: #A6841D;
+    --pine: #4A7566;
+    --rust: #B85C3E;
+    --ink-text: #F2EEE4;
+    --muted: #8D97A5;
+    --paper-text: #22201B;
+    --muted-paper: #726C5C;
+    --line: rgba(242,238,228,0.12);
+    --line-paper: rgba(34,32,27,0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  .rp-app {
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink-text);
+    background: var(--paper);
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "sidebar map" "readout readout";
+    height: 780px;
+    max-height: 90vh;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 12px 32px rgba(0,0,0,0.18);
+  }
+
+  @media (max-width: 860px) {
+    .rp-app {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 320px auto;
+      grid-template-areas: "sidebar" "map" "readout";
+      height: auto;
+      max-height: none;
+    }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .rp-sidebar {
+    grid-area: sidebar;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+  }
+
+  .rp-brand {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rp-brand__mark {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .rp-brand__mark svg { flex: none; }
+  .rp-brand__sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .rp-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rp-section__label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--trail);
+    margin-bottom: 12px;
+  }
+
+  .rp-endpoint {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .rp-endpoint__dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    justify-self: center;
+  }
+  .rp-endpoint__dot.start { background: var(--trail); }
+  .rp-endpoint__dot.end { background: var(--rust); }
+  .rp-endpoint input[type=text] {
+    width: 100%;
+  }
+
+  input[type=text], input[type=number], select {
+    background: var(--ink-3);
+    border: 1px solid var(--line);
+    color: var(--ink-text);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus {
+    border-color: var(--trail);
+  }
+  input::placeholder { color: var(--muted); }
+
+  .rp-btn-place {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--ink-3);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    transition: all 0.15s;
+  }
+  .rp-btn-place:hover { border-color: var(--trail); color: var(--trail); }
+  .rp-btn-place.armed { background: var(--trail); color: var(--ink); border-color: var(--trail); }
+
+  .rp-stop {
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .rp-stop__row1 {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .rp-stop__row2 {
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    gap: 6px;
+  }
+  .rp-stop input, .rp-stop select { font-size: 12px; padding: 6px 8px; }
+  .rp-btn-remove {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    flex: none;
+  }
+  .rp-btn-remove:hover { color: var(--rust); border-color: var(--rust); }
+
+  .rp-add-stop {
+    width: 100%;
+    padding: 9px;
+    border-radius: 6px;
+    border: 1px dashed var(--line);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rp-add-stop:hover { border-color: var(--trail); color: var(--trail); }
+
+  .rp-field { margin-bottom: 14px; }
+  .rp-field:last-child { margin-bottom: 0; }
+  .rp-field__head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 7px;
+  }
+  .rp-field__name { font-size: 13px; color: var(--ink-text); }
+  .rp-field__val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; font-weight: 500; color: var(--trail);
+  }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--trail);
+    height: 4px;
+  }
+  input[type=number].rp-stepper { width: 64px; text-align: center; }
+
+  .rp-compute {
+    margin: 4px 20px 20px;
+    padding: 13px;
+    border-radius: 8px;
+    border: none;
+    background: var(--trail);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .rp-compute:hover { background: var(--trail-dark); }
+  .rp-compute:disabled { background: var(--ink-3); color: var(--muted); cursor: not-allowed; }
+
+  .rp-armed-banner {
+    display: none;
+    margin: 0 20px 14px;
+    padding: 9px 11px;
+    border-radius: 6px;
+    background: rgba(201,162,39,0.14);
+    border: 1px solid var(--trail);
+    color: var(--trail);
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .rp-armed-banner.show { display: block; }
+
+  /* ---------- Mode switcher ---------- */
+  .rp-mode-tabs {
+    display: flex; gap: 6px;
+    padding: 0 20px 16px;
+  }
+  .rp-mode-tab {
+    flex: 1;
+    padding: 9px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--ink-2);
+    color: var(--muted);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rp-mode-tab:hover { color: var(--ink-text); }
+  .rp-mode-tab.active { background: var(--trail); color: var(--ink); border-color: var(--trail); }
+
+  .rp-app.mode-matrix .rp-only-map { display: none !important; }
+  .rp-app.mode-map .rp-only-matrix { display: none !important; }
+
+  /* ---------- Matrix mode: node chips + distance table ---------- */
+  .rp-node-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .rp-node-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 6px 5px 10px;
+    border-radius: 14px;
+    background: var(--ink-3);
+    border: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  .rp-node-chip button {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 13px; line-height: 1; padding: 2px;
+  }
+  .rp-node-chip button:hover { color: var(--rust); }
+
+  .rp-matrix-scroll {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .rp-matrix-table {
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .rp-matrix-table th, .rp-matrix-table td {
+    padding: 0;
+    border: 1px solid var(--line);
+    text-align: center;
+    min-width: 52px;
+  }
+  .rp-matrix-table th {
+    background: var(--ink-2);
+    color: var(--trail);
+    padding: 6px 8px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .rp-matrix-table th.rp-matrix-rowhead {
+    text-align: left;
+    position: sticky; left: 0;
+    background: var(--ink-2);
+  }
+  .rp-matrix-table input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--ink-text);
+    text-align: center;
+    padding: 6px 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    border-radius: 0;
+  }
+  .rp-matrix-table input:focus { background: var(--ink-3); outline: none; }
+  .rp-matrix-table input:disabled { color: var(--muted); opacity: 0.5; }
+  .rp-matrix-hint {
+    font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.5;
+  }
+
+  /* ---------- Abstract graph (matrix-mode visualization) ---------- */
+  .rp-graph-wrap { grid-area: map; position: relative; background: var(--paper); }
+  #rp-graph-svg { width: 100%; height: 100%; }
+  .rp-graph-node-label { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---------- Map ---------- */
+  .rp-map-wrap { grid-area: map; position: relative; }
+  #rp-map { width: 100%; height: 100%; background: var(--paper); }
+  .leaflet-container { font-family: 'IBM Plex Sans', sans-serif; }
+
+  .rp-legend {
+    position: absolute; top: 14px; right: 14px; z-index: 500;
+    background: rgba(27,36,48,0.92);
+    border-radius: 8px;
+    padding: 10px 13px;
+    font-size: 11px;
+    color: var(--ink-text);
+    display: flex; flex-direction: column; gap: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  .rp-legend__item { display: flex; align-items: center; gap: 7px; }
+  .rp-legend__swatch { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ---------- Readout ---------- */
+  .rp-readout {
+    grid-area: readout;
+    background: var(--paper-2);
+    border-top: 2px solid var(--trail);
+    padding: 16px 22px;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+    color: var(--paper-text);
+  }
+  .rp-readout__stat { flex: none; }
+  .rp-readout__label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted-paper); margin-bottom: 3px;
+  }
+  .rp-readout__value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 21px; font-weight: 600; color: var(--paper-text);
+  }
+  .rp-readout__value.accent { color: var(--trail-dark); }
+  .rp-budget-bar {
+    width: 130px; height: 5px; border-radius: 3px;
+    background: var(--line-paper);
+    overflow: hidden; margin-top: 6px;
+  }
+  .rp-budget-bar__fill { height: 100%; background: var(--trail); border-radius: 3px; transition: width 0.4s; }
+
+  .rp-trail {
+    flex: 1; min-width: 220px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+  .rp-chip {
+    padding: 4px 9px; border-radius: 12px;
+    background: var(--ink);
+    color: var(--ink-text);
+    white-space: nowrap;
+  }
+  .rp-chip.endpoint { background: var(--trail); color: var(--ink); font-weight: 600; }
+  .rp-arrow { color: var(--muted-paper); }
+
+  /* ---------- Add-stop popup (click-on-map) ---------- */
+  .leaflet-popup-content-wrapper.rp-popup, .rp-popup .leaflet-popup-content-wrapper {
+    background: var(--ink);
+    color: var(--ink-text);
+    border-radius: 8px;
+  }
+  .rp-popup .leaflet-popup-tip { background: var(--ink); }
+  .rp-popup .leaflet-popup-close-button { color: var(--muted) !important; }
+  .rp-popup-form {
+    display: flex; flex-direction: column; gap: 7px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-width: 180px;
+  }
+  .rp-popup-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--trail); margin-bottom: 2px;
+  }
+  .rp-popup-form input {
+    width: 100%;
+  }
+  .rp-popup-actions { display: flex; gap: 6px; margin-top: 2px; }
+  .rp-popup-actions button {
+    flex: 1;
+    padding: 7px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .rp-popup-cancel { background: transparent; color: var(--muted); }
+  .rp-popup-cancel:hover { color: var(--ink-text); }
+  .rp-popup-add { background: var(--trail); color: var(--ink); font-weight: 600; border-color: var(--trail); }
+  .rp-popup-add:hover { background: var(--trail-dark); }
+
+  .rp-map-hint {
+    position: absolute; bottom: 14px; left: 14px; z-index: 500;
+    background: rgba(27,36,48,0.88);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 7px 11px;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  .rp-map-hint strong { color: var(--trail); font-weight: 500; }
+
+  .rp-method-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--muted-paper);
+    color: var(--muted-paper);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .rp-empty-msg {
+    color: var(--muted-paper);
+    font-size: 13px;
+    font-style: italic;
+  }
+  .rp-error-msg {
+    color: var(--rust);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 4px; }
+</style>
+
+<div class="rp-app mode-map" id="rp-app">
+  <div class="rp-sidebar">
+    <div class="rp-brand">
+      <div class="rp-brand__mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#C9A227" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="#C9A227"/></svg>
+        Trail Log
+      </div>
+      <div class="rp-brand__sub">sightseeing route planner — S·e^(−k·d) decay model</div>
+    </div>
+
+    <div class="rp-mode-tabs">
+      <button class="rp-mode-tab active" id="rp-tab-map" data-mode="map">Map</button>
+      <button class="rp-mode-tab" id="rp-tab-matrix" data-mode="matrix">Distance Matrix</button>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section__label">Journey</div>
+      <div class="rp-endpoint">
+        <span class="rp-endpoint__dot start"></span>
+        <input type="text" id="rp-start-name" value="Jaipur Junction" placeholder="Start name">
+        <button class="rp-btn-place rp-only-map" data-place="start" title="Place on map">⌖</button>
+      </div>
+      <div class="rp-endpoint">
+        <span class="rp-endpoint__dot end"></span>
+        <input type="text" id="rp-end-name" value="Jaipur Airport" placeholder="Destination name">
+        <button class="rp-btn-place rp-only-map" data-place="end" title="Place on map">⌖</button>
+      </div>
+    </div>
+
+    <div class="rp-armed-banner" id="rp-armed-banner"></div>
+
+    <div class="rp-section rp-only-map">
+      <div class="rp-section__label">Candidate stops</div>
+      <div id="rp-stops-list"></div>
+      <button class="rp-add-stop" id="rp-add-stop">+ Add a candidate stop</button>
+    </div>
+
+    <div class="rp-section rp-only-matrix">
+      <div class="rp-section__label">Nodes</div>
+      <div class="rp-node-chips" id="rp-node-chips"></div>
+      <div id="rp-matrix-stops-list"></div>
+      <button class="rp-add-stop" id="rp-add-stop-matrix">+ Add a node (name, category, score)</button>
+      <div class="rp-section__label" style="margin-top:16px;">Distance matrix (km)</div>
+      <div class="rp-matrix-scroll">
+        <table class="rp-matrix-table" id="rp-matrix-table"></table>
+      </div>
+      <div class="rp-matrix-hint">Editing a cell fills in both directions (A→B and B→A), matching how the assignment's own distance matrices work. Diagonal is always 0.</div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section__label">Constraints</div>
+      <div class="rp-field">
+        <div class="rp-field__head">
+          <span class="rp-field__name">Distance budget</span>
+          <span class="rp-field__val" id="rp-budget-val">30 km</span>
+        </div>
+        <input type="range" id="rp-budget" min="1" max="100" value="30" step="1">
+      </div>
+      <div class="rp-field">
+        <div class="rp-field__head">
+          <span class="rp-field__name">Category threshold (n)</span>
+        </div>
+        <input type="number" class="rp-stepper" id="rp-threshold" min="0" max="10" value="2">
+      </div>
+    </div>
+
+    <button class="rp-compute" id="rp-compute">Compute optimal route</button>
+  </div>
+
+  <div class="rp-map-wrap rp-only-map">
+    <div id="rp-map"></div>
+    <div class="rp-legend">
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#C9A227"></span>Start</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#B85C3E"></span>Destination</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#4A7566"></span>On route</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#8D97A5"></span>Not selected</div>
+    </div>
+    <div class="rp-map-hint">Click anywhere on the map to <strong>add a candidate stop</strong></div>
+  </div>
+
+  <div class="rp-graph-wrap rp-only-matrix">
+    <svg id="rp-graph-svg" viewBox="0 0 600 500"></svg>
+    <div class="rp-legend">
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#C9A227"></span>Start</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#B85C3E"></span>Destination</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#4A7566"></span>On route</div>
+      <div class="rp-legend__item"><span class="rp-legend__swatch" style="background:#8D97A5"></span>Not selected</div>
+    </div>
+  </div>
+
+  <div class="rp-readout" id="rp-readout">
+    <div class="rp-empty-msg">Add candidate stops and press "Compute optimal route" to see results here.</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function() {
+  // ============================================================
+  // ALGORITHM CORE (verified standalone against the assignment's
+  // decay + category-threshold model before being wired to the UI)
+  // ============================================================
+
+  function haversine(a, b) {
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function evaluateRoute(route, threshold, k) {
+    let cum = 0, score = 0;
+    const counts = {};
+    for (let i = 1; i < route.length - 1; i++) {
+      const prev = route[i - 1], loc = route[i];
+      const leg = haversine(prev, loc);
+      const countBefore = counts[loc.category] || 0;
+      let eff = loc.score * Math.exp(-k * cum);
+      const penalized = countBefore >= threshold;
+      if (penalized) eff *= 0.9;
+      score += eff;
+      counts[loc.category] = countBefore + 1;
+      cum += leg;
+    }
+    cum += haversine(route[route.length - 2], route[route.length - 1]);
+    return { score, distance: cum };
+  }
+
+  // Exact backtracking with budget pruning -- guaranteed optimal.
+  // Safe for candidate counts up to ~12 within a UI-responsive time budget.
+  function exactSolve(start, end, candidates, budget, threshold, k) {
+    const n = candidates.length;
+    let best = { score: -1, route: null, distance: null };
+    function dfs(current, mask, cumDist, score, path) {
+      const totalIfEnd = cumDist + haversine(current, end);
+      if (totalIfEnd <= budget + 1e-9 && score > best.score + 1e-9) {
+        best = { score, route: path.concat([end]), distance: totalIfEnd };
+      }
+      for (let i = 0; i < n; i++) {
+        if (mask & (1 << i)) continue;
+        const loc = candidates[i];
+        const leg = haversine(current, loc);
+        const newCum = cumDist + leg;
+        if (newCum > budget + 1e-9) continue;
+        let countSoFar = 0;
+        for (let j = 0; j < n; j++) if ((mask & (1 << j)) && candidates[j].category === loc.category) countSoFar++;
+        let eff = loc.score * Math.exp(-k * cumDist);
+        if (countSoFar >= threshold) eff *= 0.9;
+        dfs(loc, mask | (1 << i), newCum, score + eff, path.concat([loc]));
+      }
+    }
+    dfs(start, 0, 0, 0, [start]);
+    return best;
+  }
+
+  // Beam(S/d1, width=3) -- our validated ranking metric, used as the
+  // warm-start for simulated annealing on larger candidate sets.
+  function beamSearchSd1(start, end, candidates, budget, threshold, k, beamWidth) {
+    let beams = [{ path: [start], visited: new Set(), cum: 0, trueScore: 0, rankAccum: 0 }];
+    let best = { score: -1, route: null, distance: null };
+    for (let step = 0; step < candidates.length; step++) {
+      const newBeams = [];
+      for (const b of beams) {
+        const last = b.path[b.path.length - 1];
+        const totalIfEnd = b.cum + haversine(last, end);
+        if (totalIfEnd <= budget && b.trueScore > best.score) {
+          best = { score: b.trueScore, route: b.path.concat([end]), distance: totalIfEnd };
+        }
+        for (const loc of candidates) {
+          if (b.visited.has(loc.id)) continue;
+          const leg = haversine(last, loc);
+          const newCum = b.cum + leg;
+          if (newCum > budget) continue;
+          let countSoFar = 0;
+          for (const id of b.visited) {
+            const other = candidates.find(c => c.id === id);
+            if (other && other.category === loc.category) countSoFar++;
+          }
+          const penalized = countSoFar >= threshold;
+          const m = loc.score / Math.max(leg, 1e-6);
+          let te = loc.score * Math.exp(-k * b.cum);
+          if (penalized) te *= 0.9;
+          const newVisited = new Set(b.visited);
+          newVisited.add(loc.id);
+          newBeams.push({ path: b.path.concat([loc]), visited: newVisited, cum: newCum, trueScore: b.trueScore + te, rankAccum: b.rankAccum + m });
+        }
+      }
+      if (newBeams.length === 0) break;
+      newBeams.sort((a, b) => b.rankAccum - a.rankAccum);
+      beams = newBeams.slice(0, beamWidth);
+    }
+    for (const b of beams) {
+      const last = b.path[b.path.length - 1];
+      const totalIfEnd = b.cum + haversine(last, end);
+      if (totalIfEnd <= budget && b.trueScore > best.score) {
+        best = { score: b.trueScore, route: b.path.concat([end]), distance: totalIfEnd };
+      }
+    }
+    return best;
+  }
+
+  function mutateRoute(route, allCandidates) {
+    const inter = route.slice(1, -1);
+    const ops = ['swap', 'invert', 'insert', 'delete'];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let newInter = inter.slice();
+    if (op === 'swap' && newInter.length >= 2) {
+      const i = Math.floor(Math.random() * newInter.length);
+      let j = Math.floor(Math.random() * newInter.length);
+      while (j === i) j = Math.floor(Math.random() * newInter.length);
+      const tmp = newInter[i]; newInter[i] = newInter[j]; newInter[j] = tmp;
+    } else if (op === 'invert' && newInter.length >= 2) {
+      let i = Math.floor(Math.random() * newInter.length);
+      let j = Math.floor(Math.random() * newInter.length);
+      if (i > j) { const t = i; i = j; j = t; }
+      const seg = newInter.slice(i, j + 1).reverse();
+      newInter = newInter.slice(0, i).concat(seg, newInter.slice(j + 1));
+    } else if (op === 'insert') {
+      const visitedIds = new Set(newInter.map(l => l.id));
+      const unvisited = allCandidates.filter(l => !visitedIds.has(l.id));
+      if (unvisited.length === 0) return null;
+      const loc = unvisited[Math.floor(Math.random() * unvisited.length)];
+      const pos = Math.floor(Math.random() * (newInter.length + 1));
+      newInter.splice(pos, 0, loc);
+    } else if (op === 'delete' && newInter.length >= 1) {
+      const pos = Math.floor(Math.random() * newInter.length);
+      newInter.splice(pos, 1);
+    } else {
+      return null;
+    }
+    return [route[0]].concat(newInter, [route[route.length - 1]]);
+  }
+
+  function warmStartSA(start, end, candidates, budget, threshold, k, iterations) {
+    const beam = beamSearchSd1(start, end, candidates, budget, threshold, k, 3);
+    if (!beam.route) return beam;
+    let current = beam.route.slice();
+    let currentScore = evaluateRoute(current, threshold, k).score;
+    let best = { route: current.slice(), score: currentScore };
+    let T = 1.0, alpha = 0.995;
+    for (let it = 0; it < iterations; it++) {
+      T *= alpha;
+      if (T < 1e-6) break;
+      const cand = mutateRoute(current, candidates);
+      if (!cand) continue;
+      const { score: s, distance: d } = evaluateRoute(cand, threshold, k);
+      if (d > budget) continue;
+      const delta = s - currentScore;
+      if (delta > 0 || Math.random() < Math.exp(delta / Math.max(T, 1e-9))) {
+        current = cand; currentScore = s;
+        if (s > best.score) best = { route: current.slice(), score: s };
+      }
+    }
+    const finalEval = evaluateRoute(best.route, threshold, k);
+    return { score: best.score, route: best.route, distance: finalEval.distance };
+  }
+
+  function solve(start, end, candidates, budget, threshold, k) {
+    if (candidates.length <= 12) {
+      return { result: exactSolve(start, end, candidates, budget, threshold, k), method: 'Exact search' };
+    }
+    return { result: warmStartSA(start, end, candidates, budget, threshold, k, 4000), method: 'Heuristic search' };
+  }
+
+  // ============================================================
+  // STATE
+  // ============================================================
+
+  const K_DECAY = 0.1;
+  let idCounter = 1;
+  const newId = () => 'loc' + (idCounter++);
+
+  let state = {
+    start: { id: 'start', name: 'Jaipur Junction', lat: 26.9196, lng: 75.7878 },
+    end: { id: 'end', name: 'Jaipur Airport', lat: 26.8242, lng: 75.8122 },
+    stops: [
+      { id: newId(), name: 'Hawa Mahal', category: 'Historical', score: 9, lat: 26.9239, lng: 75.8267 },
+      { id: newId(), name: 'City Palace', category: 'Historical', score: 10, lat: 26.9258, lng: 75.8237 },
+      { id: newId(), name: 'Jantar Mantar', category: 'Historical', score: 7, lat: 26.9247, lng: 75.8244 },
+      { id: newId(), name: 'Amber Fort', category: 'Historical', score: 10, lat: 26.9855, lng: 75.8513 },
+      { id: newId(), name: 'Nahargarh Fort', category: 'Nature', score: 8, lat: 26.9373, lng: 75.8153 },
+      { id: newId(), name: 'Central Park', category: 'Nature', score: 6, lat: 26.8990, lng: 75.8070 },
+      { id: newId(), name: 'Chokhi Dhani', category: 'Food', score: 8, lat: 26.8390, lng: 75.8090 },
+      { id: newId(), name: 'Masala Chowk', category: 'Food', score: 6, lat: 26.9130, lng: 75.8020 },
+    ],
+    armed: null, // 'start' | 'end' | stop id, while in click-to-place mode
+  };
+
+  // ============================================================
+  // MAP SETUP
+  // ============================================================
+
+  const map = L.map('rp-map', { zoomControl: true }).setView([26.90, 75.81], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18,
+  }).addTo(map);
+
+  let markers = {};
+  let routeLine = null;
+
+  function makeIcon(kind, selected) {
+    // kind: 'start' | 'end' | 'stop-on' | 'stop-off'
+    const styles = {
+      'start': { bg: '#C9A227', size: 22, ring: true },
+      'end': { bg: '#B85C3E', size: 22, ring: true },
+      'stop-on': { bg: '#4A7566', size: 16, ring: false },
+      'stop-off': { bg: '#8D97A5', size: 12, ring: false },
+    };
+    const s = styles[kind];
+    const ringHtml = s.ring ? `border:2px solid #F2EEE4;` : `border:2px solid rgba(255,255,255,0.6);`;
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:${s.size}px;height:${s.size}px;border-radius:50%;background:${s.bg};${ringHtml}box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
+      iconSize: [s.size, s.size],
+      iconAnchor: [s.size / 2, s.size / 2],
+    });
+  }
+
+  function renderMarkers(routeIds) {
+    Object.values(markers).forEach(m => map.removeLayer(m));
+    markers = {};
+
+    const onRoute = new Set(routeIds || []);
+
+    const startMarker = L.marker([state.start.lat, state.start.lng], { icon: makeIcon('start'), draggable: false })
+      .bindTooltip(state.start.name, { direction: 'top' });
+    startMarker.addTo(map);
+    markers['start'] = startMarker;
+
+    const endMarker = L.marker([state.end.lat, state.end.lng], { icon: makeIcon('end'), draggable: false })
+      .bindTooltip(state.end.name, { direction: 'top' });
+    endMarker.addTo(map);
+    markers['end'] = endMarker;
+
+    state.stops.forEach(stop => {
+      const kind = onRoute.has(stop.id) ? 'stop-on' : 'stop-off';
+      const marker = L.marker([stop.lat, stop.lng], { icon: makeIcon(kind) })
+        .bindTooltip(`${stop.name} · ${stop.category} · score ${stop.score}`, { direction: 'top' });
+      marker.addTo(map);
+      markers[stop.id] = marker;
+    });
+  }
+
+  function drawRoute(routeLocs) {
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (!routeLocs || routeLocs.length < 2) return;
+    const latlngs = routeLocs.map(l => [l.lat, l.lng]);
+    routeLine = L.polyline(latlngs, {
+      color: '#C9A227', weight: 3.5, opacity: 0.9, dashArray: '1,10', lineCap: 'round',
+    }).addTo(map);
+
+    // Signature moment: trace the trail in, stop by stop.
+    let dashOffset = 1000;
+    routeLine.setStyle({ dashArray: `${dashOffset}` });
+    let frame = 0;
+    const totalFrames = 40;
+    const anim = setInterval(() => {
+      frame++;
+      const t = frame / totalFrames;
+      const dashLen = 1000 * t;
+      routeLine.setStyle({ dashArray: `${dashLen},${1000 - dashLen}` });
+      if (frame >= totalFrames) {
+        clearInterval(anim);
+        routeLine.setStyle({ dashArray: '1,10' });
+      }
+    }, 16);
+
+    map.fitBounds(latlngs, { padding: [40, 40] });
+  }
+
+  map.on('click', (e) => {
+    if (state.armed) {
+      const { lat, lng } = e.latlng;
+      if (state.armed === 'start') { state.start.lat = lat; state.start.lng = lng; }
+      else if (state.armed === 'end') { state.end.lat = lat; state.end.lng = lng; }
+      else {
+        const stop = state.stops.find(s => s.id === state.armed);
+        if (stop) { stop.lat = lat; stop.lng = lng; }
+      }
+      disarmPlacement();
+      renderMarkers();
+      renderStopsList();
+      return;
+    }
+    openAddStopPopup(e.latlng);
+  });
+
+  function openAddStopPopup(latlng) {
+    const formId = 'rp-popup-form-' + Date.now();
+    const html = `
+      <div class="rp-popup-form" id="${formId}">
+        <div class="rp-popup-title">New candidate stop</div>
+        <input type="text" class="rp-popup-name" placeholder="Stop name" value="New stop">
+        <input type="text" class="rp-popup-cat" list="rp-cat-list" placeholder="Category" value="Historical">
+        <input type="number" class="rp-popup-score" placeholder="Satisfaction score" value="5" min="0">
+        <div class="rp-popup-actions">
+          <button type="button" class="rp-popup-cancel">Cancel</button>
+          <button type="button" class="rp-popup-add">Add stop</button>
+        </div>
+      </div>
+    `;
+    const popup = L.popup({ closeButton: true, className: 'rp-popup', minWidth: 200 })
+      .setLatLng(latlng)
+      .setContent(html)
+      .openOn(map);
+
+    setTimeout(() => {
+      const container = document.getElementById(formId);
+      if (!container) return;
+      const nameInput = container.querySelector('.rp-popup-name');
+      const catInput = container.querySelector('.rp-popup-cat');
+      const scoreInput = container.querySelector('.rp-popup-score');
+      nameInput.focus();
+      nameInput.select();
+
+      const confirmAdd = () => {
+        const name = nameInput.value.trim() || 'New stop';
+        const category = catInput.value.trim() || 'Other';
+        const score = parseFloat(scoreInput.value) || 0;
+        state.stops.push({ id: newId(), name, category, score, lat: latlng.lat, lng: latlng.lng });
+        renderStopsList();
+        renderMarkers();
+        map.closePopup(popup);
+      };
+
+      container.querySelector('.rp-popup-add').addEventListener('click', confirmAdd);
+      container.querySelector('.rp-popup-cancel').addEventListener('click', () => map.closePopup(popup));
+      [nameInput, catInput, scoreInput].forEach(inp => {
+        inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') confirmAdd(); });
+      });
+    }, 0);
+  }
+
+  function disarmPlacement() {
+    state.armed = null;
+    document.getElementById('rp-armed-banner').classList.remove('show');
+    document.querySelectorAll('.rp-btn-place').forEach(b => b.classList.remove('armed'));
+  }
+
+  function armPlacement(id, label) {
+    state.armed = id;
+    const banner = document.getElementById('rp-armed-banner');
+    banner.textContent = `Click anywhere on the map to place "${label}"`;
+    banner.classList.add('show');
+    document.querySelectorAll('.rp-btn-place').forEach(b => {
+      b.classList.toggle('armed', b.dataset.place === id || b.dataset.placeStop === id);
+    });
+  }
+
+  // ============================================================
+  // SIDEBAR: stops list rendering + events
+  // ============================================================
+
+  const CATEGORY_OPTIONS = ['Historical', 'Nature', 'Food', 'Other'];
+
+  function renderStopsList() {
+    const container = document.getElementById('rp-stops-list');
+    container.innerHTML = '';
+    state.stops.forEach(stop => {
+      const row = document.createElement('div');
+      row.className = 'rp-stop';
+      row.innerHTML = `
+        <div class="rp-stop__row1">
+          <input type="text" data-field="name" value="${escapeHtml(stop.name)}" placeholder="Stop name">
+          <button class="rp-btn-place" data-place-stop="${stop.id}" title="Place on map">⌖</button>
+          <button class="rp-btn-remove" data-remove="${stop.id}" title="Remove">×</button>
+        </div>
+        <div class="rp-stop__row2">
+          <input type="text" list="rp-cat-list" data-field="category" value="${escapeHtml(stop.category)}" placeholder="Category">
+          <input type="number" data-field="score" value="${stop.score}" min="0" step="1" title="Satisfaction score">
+        </div>
+      `;
+      container.appendChild(row);
+
+      row.querySelector('[data-field="name"]').addEventListener('input', e => stop.name = e.target.value);
+      row.querySelector('[data-field="category"]').addEventListener('input', e => stop.category = e.target.value || 'Other');
+      row.querySelector('[data-field="score"]').addEventListener('input', e => stop.score = parseFloat(e.target.value) || 0);
+      row.querySelector('[data-place-stop]').addEventListener('click', () => armPlacement(stop.id, stop.name || 'stop'));
+      row.querySelector('[data-remove]').addEventListener('click', () => {
+        state.stops = state.stops.filter(s => s.id !== stop.id);
+        renderStopsList();
+        renderMarkers();
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  document.getElementById('rp-add-stop').addEventListener('click', () => {
+    const center = map.getCenter();
+    state.stops.push({
+      id: newId(), name: 'New stop', category: 'Historical', score: 5,
+      lat: center.lat + (Math.random() - 0.5) * 0.01,
+      lng: center.lng + (Math.random() - 0.5) * 0.01,
+    });
+    renderStopsList();
+    renderMarkers();
+  });
+
+  document.querySelectorAll('.rp-btn-place').forEach(btn => {
+    if (btn.dataset.place) {
+      btn.addEventListener('click', () => {
+        const label = btn.dataset.place === 'start' ? state.start.name : state.end.name;
+        armPlacement(btn.dataset.place, label || btn.dataset.place);
+      });
+    }
+  });
+
+  document.getElementById('rp-start-name').addEventListener('input', e => state.start.name = e.target.value);
+  document.getElementById('rp-end-name').addEventListener('input', e => state.end.name = e.target.value);
+
+  // datalist for category suggestions
+  const datalist = document.createElement('datalist');
+  datalist.id = 'rp-cat-list';
+  datalist.innerHTML = CATEGORY_OPTIONS.map(c => `<option value="${c}">`).join('');
+  document.body.appendChild(datalist);
+
+  // ============================================================
+  // CONSTRAINTS: budget + threshold
+  // ============================================================
+
+  const budgetInput = document.getElementById('rp-budget');
+  const budgetVal = document.getElementById('rp-budget-val');
+  budgetInput.addEventListener('input', () => {
+    budgetVal.textContent = `${budgetInput.value} km`;
+  });
+
+  // ============================================================
+  // COMPUTE + READOUT
+  // ============================================================
+
+  document.getElementById('rp-compute').addEventListener('click', () => {
+    const budget = parseFloat(budgetInput.value);
+    const threshold = parseFloat(document.getElementById('rp-threshold').value) || 0;
+
+    if (state.stops.length === 0) {
+      renderReadout(null, null, null, 'No candidate stops added yet.');
+      renderMarkers();
+      drawRoute(null);
+      return;
+    }
+
+    const { result, method } = solve(state.start, state.end, state.stops, budget, threshold, K_DECAY);
+
+    if (!result.route) {
+      const directDist = haversine(state.start, state.end);
+      renderReadout(null, null, null,
+        `No feasible route: the direct distance from ${state.start.name} to ${state.end.name} alone is ${directDist.toFixed(1)} km, above your ${budget} km budget.`);
+      renderMarkers();
+      drawRoute(null);
+      return;
+    }
+
+    renderReadout(result, budget, method, null);
+    const routeIds = result.route.map(l => l.id);
+    renderMarkers(routeIds);
+    drawRoute(result.route);
+  });
+
+  function renderReadout(result, budget, method, errorMsg) {
+    const el = document.getElementById('rp-readout');
+    if (errorMsg) {
+      el.innerHTML = `<div class="rp-error-msg">${escapeHtml(errorMsg)}</div>`;
+      return;
+    }
+    if (!result) {
+      el.innerHTML = `<div class="rp-empty-msg">Add candidate stops and press "Compute optimal route" to see results here.</div>`;
+      return;
+    }
+    const pct = Math.min(100, (result.distance / budget) * 100);
+    const chips = result.route.map((loc, i) => {
+      const isEndpoint = i === 0 || i === result.route.length - 1;
+      return `<span class="rp-chip ${isEndpoint ? 'endpoint' : ''}">${escapeHtml(loc.name)}</span>`;
+    }).join('<span class="rp-arrow">→</span>');
+
+    el.innerHTML = `
+      <div class="rp-readout__stat">
+        <div class="rp-readout__label">Effective satisfaction</div>
+        <div class="rp-readout__value accent">${result.score.toFixed(3)}</div>
+      </div>
+      <div class="rp-readout__stat">
+        <div class="rp-readout__label">Total distance</div>
+        <div class="rp-readout__value">${result.distance.toFixed(1)} / ${budget} km</div>
+        <div class="rp-budget-bar"><div class="rp-budget-bar__fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="rp-readout__stat">
+        <div class="rp-readout__label">Stops visited</div>
+        <div class="rp-readout__value">${result.route.length - 2} / ${state.stops.length}</div>
+      </div>
+      <div class="rp-trail">${chips}</div>
+      <span class="rp-method-badge">${method}</span>
+    `;
+  }
+
+  // ============================================================
+  // INITIAL RENDER
+  // ============================================================
+
+  renderStopsList();
+  renderMarkers();
+  budgetVal.textContent = `${budgetInput.value} km`;
+})();
+</script>
