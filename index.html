@@ -30,11 +30,12 @@
             height: 100vh;
             background: var(--bg-parchment);
             color: #0f172a;
+            overflow: hidden;
         }
 
         /* Sidebar styling */
         #sidebar {
-            width: 400px;
+            width: 420px;
             background: var(--panel-bg);
             color: var(--panel-text);
             display: flex;
@@ -102,7 +103,17 @@
             text-transform: uppercase;
         }
 
-        input[type="range"], input[type="number"], textarea {
+        .inline-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .inline-inputs div {
+            flex: 1;
+        }
+
+        input[type="range"], input[type="number"], input[type="text"], select {
             width: 100%;
             background: #0f172a;
             border: 1px solid var(--accent-muted);
@@ -113,15 +124,86 @@
             font-size: 0.85rem;
         }
 
-        textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
-
         .value-display {
             float: right;
             color: var(--accent-gold);
             font-family: var(--font-mono);
+        }
+
+        /* Matrix Section Styling matching user image */
+        .card-section {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+
+        /* Matrix Table UI */
+        .matrix-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 10px;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #334155;
+            padding: 4px;
+            text-align: center;
+            min-width: 50px;
+        }
+
+        .matrix-table th {
+            background: #1e293b;
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .matrix-table td.corner {
+            background: #1e293b;
+            font-weight: bold;
+            color: var(--panel-text);
+        }
+
+        .matrix-input {
+            width: 45px;
+            background: #0f172a;
+            border: none;
+            color: white;
+            text-align: center;
+            padding: 4px 2px;
+            font-family: var(--font-mono);
+        }
+
+        .matrix-input:focus {
+            outline: 1px solid var(--accent-gold);
+            background: #1e293b;
         }
 
         /* Action Buttons */
@@ -234,7 +316,7 @@
         </div>
         
         <div class="controls">
-            <!-- Global Budget & Penalties -->
+            <!-- Global Parameters -->
             <div class="input-group">
                 <label>Distance Budget (km) <span class="value-display" id="budgetValue">30 km</span></label>
                 <input type="range" id="budget" min="5" max="100" value="30" oninput="document.getElementById('budgetValue').innerText = this.value + ' km'">
@@ -245,9 +327,9 @@
                 <input type="range" id="threshold" min="1" max="5" value="1" oninput="document.getElementById('threshValue').innerText = this.value">
             </div>
 
-            <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;">
 
-            <!-- Map Mode Inputs -->
+            <!-- MAP MODE INPUT SYSTEM -->
             <div id="map-inputs">
                 <label style="font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; display:block; margin-bottom: 8px;">Active Dataset (Jaipur)</label>
                 <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: #cbd5e1;">
@@ -260,30 +342,63 @@
                 </button>
             </div>
 
-            <!-- Matrix Mode Inputs -->
+            <!-- MATRIX MODE INPUT SYSTEM (Fully Dynamic UI) -->
             <div id="matrix-inputs" style="display: none;">
-                <div class="input-group">
-                    <label>Nodes Definition (JSON format)</label>
-                    <textarea id="nodesJSON">[
-  {"id": 0, "name": "Node 0 (Start)", "cat": "A", "score": 0},
-  {"id": 1, "name": "Node 1 (End)", "cat": "B", "score": 0},
-  {"id": 2, "name": "Node 2", "cat": "A", "score": 8},
-  {"id": 3, "name": "Node 3", "cat": "A", "score": 10},
-  {"id": 4, "name": "Node 4", "cat": "C", "score": 6},
-  {"id": 5, "name": "Node 5", "cat": "C", "score": 7}
-]</textarea>
+                
+                <!-- 1. Anchor Labels Group -->
+                <div class="card-section">
+                    <div class="card-title">⚓ Anchors</div>
+                    <div class="inline-inputs">
+                        <div>
+                            <label style="font-size: 0.7rem; color: #94a3b8;">SOURCE ID</label>
+                            <input type="text" id="sourceId" value="S">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.7rem; color: #94a3b8;">DESTINATION ID</label>
+                            <input type="text" id="destId" value="E">
+                        </div>
+                    </div>
+                    <button style="background: #334155; font-size: 0.8rem; padding: 6px;" onclick="applyAnchors()">Apply Anchor Labels</button>
                 </div>
-                <div class="input-group">
-                    <label>Adjacency Distance Matrix</label>
-                    <textarea id="matrixJSON" style="min-height: 140px;">[
-  [0, 15, 4, 8, 12, 18],
-  [15, 0, 11, 7, 9, 5],
-  [4, 11, 0, 5, 10, 15],
-  [8, 7, 5, 0, 6, 8],
-  [12, 9, 10, 6, 0, 4],
-  [18, 5, 15, 8, 4, 0]
-]</textarea>
+
+                <!-- 2. Locations Constructor Group -->
+                <div class="card-section">
+                    <div class="card-title">📍 Locations</div>
+                    <div class="card-subtitle">Incorporate nodes into the matrix array with individual attributes:</div>
+                    
+                    <div class="input-group">
+                        <input type="text" id="nodeName" placeholder="Name (e.g., P1)">
+                    </div>
+                    <div class="inline-inputs">
+                        <div>
+                            <input type="number" id="nodeScore" placeholder="Score" min="0" max="20" step="0.5">
+                        </div>
+                        <div>
+                            <select id="nodeCategory">
+                                <option value="A">Category A</option>
+                                <option value="B">Category B</option>
+                                <option value="C">Category C</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button style="background: #334155; font-size: 0.8rem; padding: 6px;" onclick="addNewMatrixNode()">+ Add Node</button>
+                    
+                    <div id="custom-nodes-list" style="margin-top: 10px; font-family: var(--font-mono); font-size: 0.75rem; color: #94a3b8;">
+                        No custom locations defined yet.
+                    </div>
                 </div>
+
+                <!-- 3. Active Interactive Matrix Table -->
+                <div class="card-section">
+                    <div class="card-title">📊 Distance Matrix (km)</div>
+                    <div class="card-subtitle">Symmetric distance assumed. Adjusting one cell mirrors across diagonal automatically.</div>
+                    <div class="matrix-scroll">
+                        <table class="matrix-table" id="matrixTable">
+                            <!-- Populated dynamically via JS -->
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -300,10 +415,20 @@
     </div>
 
     <script>
-        // Set state system
+        // State variables
         let activeMode = 'map'; // 'map' or 'matrix'
         let locations = [];
-        let distanceMatrix = [];
+        let distanceMatrix = []; // Handles the explicit abstract network distance entries
+
+        // Matrix mode specific collections
+        let matrixNodes = [
+            { id: 0, name: "S", cat: "START", score: 0 },
+            { id: 1, name: "E", cat: "END", score: 0 }
+        ];
+        let rawMatrix = [
+            [0, 0], // S to S, S to E
+            [0, 0]  // E to S, E to E
+        ];
 
         // Initialize map
         const map = L.map('map').setView([26.9124, 75.7873], 12);
@@ -314,7 +439,7 @@
         let routeLayer = null;
         let markersLayer = L.layerGroup().addTo(map);
 
-        // Preloaded Jaipur Dataset
+        // Preloaded Jaipur Dataset for MAP mode
         const mapLocations = [
             { id: 0, name: "Jaipur Junction (Start)", lat: 26.922, lng: 75.787, cat: "START", score: 0 },
             { id: 1, name: "Jaipur Airport (End)", lat: 26.828, lng: 75.805, cat: "END", score: 0 },
@@ -328,6 +453,7 @@
             { id: 9, name: "Tapri Central", lat: 26.901, lng: 75.800, cat: "Food", score: 8 }
         ];
 
+        // Default local assignment
         locations = [...mapLocations];
 
         function setMode(mode) {
@@ -341,15 +467,15 @@
                 locations = [...mapLocations];
                 drawInitialMarkers();
             } else {
-                loadMatrixData();
+                syncMatrixWithMainSystem();
             }
         }
 
-        // Generate circular coordinates so matrix system renders on the map cleanly
+        // Generate circular coordinates so matrix system markers render on the map beautifully
         function generateCircularCoords(numNodes) {
             const centerLat = 26.9124;
             const centerLng = 75.7873;
-            const radius = 0.04; // Spread node markers slightly
+            const radius = 0.04; // Geographic spread factor
             return Array.from({length: numNodes}, (_, i) => {
                 const angle = (2 * Math.PI * i) / numNodes;
                 return {
@@ -359,29 +485,130 @@
             });
         }
 
-        function loadMatrixData() {
-            try {
-                const nodes = JSON.parse(document.getElementById('nodesJSON').value);
-                const matrix = JSON.parse(document.getElementById('matrixJSON').value);
+        // ================= DYNAMIC MATRIX EDITOR LOGIC =================
 
-                if (nodes.length !== matrix.length) {
-                    alert("Error: Number of nodes does not match matrix dimensions.");
-                    return;
+        // Update Source and Destination label names
+        function applyAnchors() {
+            const sourceVal = document.getElementById('sourceId').value.trim() || "S";
+            const destVal = document.getElementById('destId').value.trim() || "E";
+
+            matrixNodes[0].name = sourceVal;
+            matrixNodes[1].name = destVal;
+
+            syncMatrixWithMainSystem();
+        }
+
+        // Adds new custom node directly into matrix state array
+        function addNewMatrixNode() {
+            const name = document.getElementById('nodeName').value.trim();
+            const score = parseFloat(document.getElementById('nodeScore').value) || 0;
+            const cat = document.getElementById('nodeCategory').value;
+
+            if (!name) {
+                alert("Please provide a name or ID for the location.");
+                return;
+            }
+
+            const newId = matrixNodes.length;
+            matrixNodes.push({ id: newId, name: name, cat: cat, score: score });
+
+            // Expand matrix array dimensions: insert column, append row
+            rawMatrix.forEach(row => row.push(0));
+            rawMatrix.push(new Array(matrixNodes.length).fill(0));
+
+            // Clean inputs
+            document.getElementById('nodeName').value = "";
+            document.getElementById('nodeScore').value = "";
+
+            syncMatrixWithMainSystem();
+        }
+
+        // Syncs local matrix UI adjustments with routing engine
+        function syncMatrixWithMainSystem() {
+            const coords = generateCircularCoords(matrixNodes.length);
+            
+            locations = matrixNodes.map((n, idx) => ({
+                ...n,
+                lat: coords[idx].lat,
+                lng: coords[idx].lng
+            }));
+            
+            distanceMatrix = rawMatrix;
+
+            // Render Nodes list helper in UI sidebar
+            const listDiv = document.getElementById('custom-nodes-list');
+            if (matrixNodes.length <= 2) {
+                listDiv.innerHTML = "No custom locations defined yet.";
+            } else {
+                let html = '<div style="margin-top: 5px; font-weight: 600;">Intermediates:</div>';
+                for (let i = 2; i < matrixNodes.length; i++) {
+                    const n = matrixNodes[i];
+                    html += `<div>• ${n.name} (Cat: ${n.cat}, Score: ${n.score})</div>`;
                 }
+                listDiv.innerHTML = html;
+            }
 
-                const coords = generateCircularCoords(nodes.length);
-                locations = nodes.map((n, idx) => ({
-                    ...n,
-                    lat: coords[idx].lat,
-                    lng: coords[idx].lng
-                }));
-                distanceMatrix = matrix;
+            renderMatrixTable();
+            drawInitialMarkers();
+        }
 
-                drawInitialMarkers();
-            } catch (err) {
-                alert("Invalid JSON format. Check your input text.");
+        // Generates the interactive matrix table DOM
+        function renderMatrixTable() {
+            const table = document.getElementById('matrixTable');
+            table.innerHTML = "";
+
+            // 1. Header row
+            const headerRow = document.createElement('tr');
+            const cornerTh = document.createElement('th');
+            cornerTh.innerText = "-";
+            headerRow.appendChild(cornerTh);
+
+            matrixNodes.forEach(node => {
+                const th = document.createElement('th');
+                th.innerText = node.name;
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            // 2. Data Rows
+            for (let i = 0; i < matrixNodes.length; i++) {
+                const row = document.createElement('tr');
+                const rowHeader = document.createElement('td');
+                rowHeader.className = "corner";
+                rowHeader.innerText = matrixNodes[i].name;
+                row.appendChild(rowHeader);
+
+                for (let j = 0; j < matrixNodes.length; j++) {
+                    const td = document.createElement('td');
+                    if (i === j) {
+                        td.innerText = "0";
+                        td.style.color = "var(--accent-muted)";
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = "text";
+                        input.className = "matrix-input";
+                        input.value = rawMatrix[i][j];
+                        
+                        // Enforce system symmetry instantly across diagonal 
+                        input.oninput = function() {
+                            const val = parseFloat(this.value) || 0;
+                            rawMatrix[i][j] = val;
+                            rawMatrix[j][i] = val;
+                            
+                            // Live sync values without rebuilding table layout
+                            const mirrorInput = document.getElementById(`m-${j}-${i}`);
+                            if (mirrorInput) mirrorInput.value = val;
+                        };
+                        input.id = `m-${i}-${j}`;
+                        td.appendChild(input);
+                    }
+                    row.appendChild(td);
+                }
+                table.appendChild(row);
             }
         }
+
+        // ================= MAP VISUALIZER =================
 
         function drawInitialMarkers() {
             markersLayer.clearLayers();
@@ -419,10 +646,11 @@
             locations = [...mapLocations];
             document.getElementById('locCountText').innerText = `• ${locations.length - 2} Waypoints Loaded`;
             drawInitialMarkers();
-            alert("Added 5 more locations! Using approximate fallback modes (Beam Search + SA) automatically.");
+            alert("Added 5 more locations! Dynamic scaling active.");
         }
 
-        // Distance Routing Handler (Dynamic switch based on system selected)
+        // ================= ROUTING & MATH SOLVERS =================
+
         function getDistance(loc1, loc2) {
             if (activeMode === 'map') {
                 const R = 6371; // Earth's radius in km
@@ -438,7 +666,7 @@
             }
         }
 
-        // Route Scorer with Pre-Arrival Distance Decay
+        // Route evaluation with pre-arrival decay calculation
         function evaluateRoute(routeIdxs, threshold) {
             let totalDist = 0;
             let totalScore = 0;
@@ -450,7 +678,7 @@
                 const legDist = getDistance(prev, curr);
                 
                 if (i < routeIdxs.length - 1) {
-                    const decay = Math.exp(-0.1 * totalDist); // Pre-arrival distance decay
+                    const decay = Math.exp(-0.1 * totalDist); // decay depends on distance Traveled *before* arrival
                     catCounts[curr.cat] = (catCounts[curr.cat] || 0) + 1;
                     const penalty = catCounts[curr.cat] > threshold ? 0.9 : 1.0;
                     totalScore += (curr.score * decay * penalty);
@@ -460,7 +688,7 @@
             return { score: totalScore, distance: totalDist };
         }
 
-        // Exact DFS solver with branch pruning
+        // Global Optimizer exact model (DFS with bounds branch prune)
         function solveExact(budget, threshold) {
             let bestRoute = null;
             let bestScore = -1;
@@ -500,7 +728,7 @@
             return bestRoute;
         }
 
-        // Beam Search Heuristic
+        // Heuristic fallback pipeline
         function solveBeamSearch(budget, threshold) {
             let beams = [[0]];
             let bestCompleteRoute = null;
@@ -546,7 +774,6 @@
             return bestCompleteRoute ? { route: bestCompleteRoute, ...evaluateRoute(bestCompleteRoute, threshold) } : null;
         }
 
-        // Simulated Annealing Refinement
         function solveSimulatedAnnealing(warmStartRoute, budget, threshold) {
             let currentRoute = [...warmStartRoute];
             let currentEval = evaluateRoute(currentRoute, threshold);
@@ -600,12 +827,8 @@
             return { route: bestRoute, score: bestScore, distance: evaluateRoute(bestRoute, threshold).distance };
         }
 
-        // Trigger Computing Router
+        // Primary Engine Runner
         function computeRoute() {
-            if (activeMode === 'matrix') {
-                loadMatrixData();
-            }
-
             const budget = parseFloat(document.getElementById('budget').value);
             const threshold = parseInt(document.getElementById('threshold').value);
 
